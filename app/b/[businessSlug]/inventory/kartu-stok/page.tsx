@@ -1,0 +1,1 @@
+export { default } from "@/app/inventory/kartu-stok/page";
