@@ -204,7 +204,10 @@ export async function getSession(): Promise<AuthSession | null> {
       },
       businessAccesses: payload.businessAccesses,
     };
-  } catch (err) {
+  } catch (err: any) {
+    if (err?.digest === "DYNAMIC_SERVER_USAGE") {
+      throw err;
+    }
     console.error("[Auth] getSession error:", err);
     return null;
   }

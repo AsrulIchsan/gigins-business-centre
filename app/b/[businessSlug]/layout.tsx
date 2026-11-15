@@ -8,6 +8,8 @@ import { redirect } from "next/navigation";
 import { getSession, canAccessBusiness } from "@/lib/auth";
 import { BusinessStoreSync } from "@/components/layout/business-store-sync";
 
+export const dynamic = "force-dynamic";
+
 interface BusinessLayoutProps {
   children: React.ReactNode;
   params: { businessSlug: string };

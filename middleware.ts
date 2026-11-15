@@ -8,7 +8,7 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
-import { jwtVerify } from "jose";
+import { jwtVerify } from "jose/jwt/verify";
 
 const JWT_SECRET_STRING = process.env.NEXTAUTH_SECRET || "tamansari-pharmacy-super-secret-key-2026-gigin";
 const JWT_SECRET = new TextEncoder().encode(JWT_SECRET_STRING);

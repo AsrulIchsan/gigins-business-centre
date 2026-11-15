@@ -5,6 +5,8 @@ import { createSaleJournal } from "@/lib/accounting";
 import { StockTransactionType } from "@prisma/client";
 import { activityLogger } from "@/lib/logger";
 
+export const dynamic = "force-dynamic";
+
 export async function POST(request: Request) {
   try {
     const body = await request.json();

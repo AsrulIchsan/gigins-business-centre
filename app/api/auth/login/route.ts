@@ -6,6 +6,8 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
+
+export const dynamic = "force-dynamic";
 import { prisma } from "@/lib/prisma";
 import {
   signSessionToken,
