@@ -26,12 +26,14 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useBusinessStore, BusinessType } from "@/lib/business-store";
 import { useAuth } from "@/lib/use-auth";
+import { useSidebarStore } from "@/lib/sidebar-store";
 
 export function Header() {
   const router = useRouter();
   const pathname = usePathname();
   const { activeBusiness, availableBusinesses, switchBusiness, platformName } = useBusinessStore();
   const { user, logout } = useAuth();
+  const { isOpen: isSidebarOpen, toggle: toggleSidebar } = useSidebarStore();
   const [showRoleMenu, setShowRoleMenu] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
   const [showBusinessMenu, setShowBusinessMenu] = useState(false);
@@ -56,9 +58,24 @@ export function Header() {
   };
 
   return (
-    <header className="h-16 border-b bg-white sticky top-0 z-30 flex items-center justify-between px-4 lg:px-6 shadow-xs">
-      {/* Left: Mobile Title + Desktop Multi-Business Switcher */}
-      <div className="flex items-center space-x-3">
+    <header className="h-16 border-b bg-white sticky top-0 z-30 flex items-center justify-between px-3 sm:px-4 lg:px-6 shadow-xs">
+      {/* Left: Strip Tiga (Sidebar Toggle) + Multi-Business Switcher */}
+      <div className="flex items-center space-x-2 sm:space-x-3">
+        {/* Tombol Strip Tiga / Hamburger Toggle */}
+        <button
+          type="button"
+          onClick={toggleSidebar}
+          aria-label={isSidebarOpen ? "Tutup Sidebar" : "Buka Sidebar"}
+          className={`p-2 rounded-xl border transition-all flex items-center justify-center shrink-0 shadow-2xs ${
+            isSidebarOpen
+              ? "bg-slate-800 text-white border-slate-800 ring-2 ring-slate-400"
+              : "bg-white text-slate-700 hover:text-slate-900 hover:bg-slate-100 border-slate-300"
+          }`}
+          title={isSidebarOpen ? "Tutup Menu Navigasi" : "Buka Menu Navigasi (Sidebar)"}
+        >
+          <Menu className="h-5 w-5" />
+        </button>
+
         {/* Mobile View */}
         <div className="flex items-center space-x-2 lg:hidden">
           <button
