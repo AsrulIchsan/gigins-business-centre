@@ -2,6 +2,8 @@
 
 import React, { useState } from "react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { useBusinessStore } from "@/lib/business-store";
 import {
   Boxes,
   Camera,
@@ -34,6 +36,11 @@ interface OpnameEntry {
 }
 
 export default function StokOpnameMobilePage() {
+  const pathname = usePathname();
+  const { activeBusiness } = useBusinessStore();
+  const isDynamic = pathname?.startsWith("/b/");
+  const backHref = isDynamic ? `/b/${activeBusiness.slug}/dashboard` : "/";
+
   const [opnameList, setOpnameList] = useState<OpnameEntry[]>(
     INITIAL_PRODUCTS.map((p) => {
       const batch = p.batches[0];
@@ -90,7 +97,7 @@ export default function StokOpnameMobilePage() {
       <div className="bg-white p-4 rounded-xl border flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
         <div>
           <div className="flex items-center gap-2">
-            <Link href="/" className="lg:hidden p-1 rounded-full hover:bg-slate-100">
+            <Link href={backHref} className="lg:hidden p-1 rounded-full hover:bg-slate-100">
               <ArrowLeft className="h-5 w-5" />
             </Link>
             <h1 className="text-lg font-bold text-slate-800 flex items-center gap-2">

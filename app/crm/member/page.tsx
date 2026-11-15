@@ -2,6 +2,8 @@
 
 import React, { useState } from "react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { useBusinessStore } from "@/lib/business-store";
 import {
   Users,
   Plus,
@@ -28,6 +30,11 @@ import {
 } from "@/components/ui/dialog";
 
 export default function MemberCrmPage() {
+  const pathname = usePathname();
+  const { activeBusiness } = useBusinessStore();
+  const isDynamic = pathname?.startsWith("/b/");
+  const waHref = isDynamic ? `/b/${activeBusiness.slug}/crm/whatsapp` : "/crm/whatsapp";
+
   const [customers, setCustomers] = useState<MockCustomer[]>(MOCK_CUSTOMERS);
   const [search, setSearch] = useState("");
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -190,7 +197,7 @@ export default function MemberCrmPage() {
                       {cust.discountPct}%
                     </td>
                     <td className="p-3 text-right space-x-1.5">
-                      <Link href="/crm/whatsapp">
+                      <Link href={waHref}>
                         <Button variant="outline" size="sm" className="h-7 text-xs text-green-700 border-green-200">
                           <MessageSquare className="h-3 w-3 mr-1" />
                           Kirim WA

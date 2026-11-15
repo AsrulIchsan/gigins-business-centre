@@ -270,8 +270,8 @@ export const MOCK_SUPPLIERS = [
 export const MOCK_ONLINE_ORDERS = [
   {
     id: "ord-1",
-    orderNumber: "ORD-VM-20261114-001",
-    channel: "VMEDISMART",
+    orderNumber: "ORD-WEB-20261114-001",
+    channel: "WEBSTORE_INTERNAL",
     customerName: "Rina Marlina",
     phone: "08122334455",
     items: [

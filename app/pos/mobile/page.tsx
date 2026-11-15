@@ -2,6 +2,8 @@
 
 import React, { useState } from "react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { useBusinessStore } from "@/lib/business-store";
 import {
   Camera,
   Barcode,
@@ -25,6 +27,12 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 
 export default function MobilePosPage() {
+  const pathname = usePathname();
+  const { activeBusiness } = useBusinessStore();
+  const isDynamic = pathname?.startsWith("/b/");
+  const isPharmacy = activeBusiness.type === "PHARMACY";
+  const backHref = isDynamic ? `/b/${activeBusiness.slug}/dashboard` : "/";
+
   const [cart, setCart] = useState<{ product: MockProduct; qty: number; unitName: string; price: number }[]>([]);
   const [search, setSearch] = useState("");
   const [isCameraActive, setIsCameraActive] = useState(false);
@@ -81,14 +89,16 @@ export default function MobilePosPage() {
   return (
     <div className="max-w-md mx-auto min-h-[90vh] flex flex-col justify-between pb-20">
       {/* Mobile Header */}
-      <div className="bg-emerald-700 text-white p-4 rounded-b-2xl shadow-md sticky top-0 z-20">
+      <div className={`${isPharmacy ? "bg-emerald-700" : "bg-gradient-to-r from-amber-600 to-orange-600"} text-white p-4 rounded-b-2xl shadow-md sticky top-0 z-20`}>
         <div className="flex items-center justify-between mb-3">
-          <Link href="/" className="p-1 rounded-full hover:bg-emerald-800">
+          <Link href={backHref} className="p-1 rounded-full hover:bg-black/10">
             <ArrowLeft className="h-5 w-5" />
           </Link>
           <div className="text-center">
             <h1 className="font-bold text-sm">POS Kasir Mobile</h1>
-            <p className="text-[10px] text-emerald-200">Mode Operasional HP & Scanner Kamera</p>
+            <p className="text-[10px] text-white/80">
+              {isPharmacy ? "Mode Operasional HP & Scanner Kamera" : "Kasir HP Toko Mainan & Barcode Scanner"}
+            </p>
           </div>
           <button
             onClick={() => setIsCameraActive(!isCameraActive)}

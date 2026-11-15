@@ -2,6 +2,8 @@
 
 import React, { useState } from "react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { useBusinessStore } from "@/lib/business-store";
 import {
   Truck,
   Plus,
@@ -41,6 +43,11 @@ interface POItem {
 }
 
 export default function PurchaseOrderPage() {
+  const pathname = usePathname();
+  const { activeBusiness } = useBusinessStore();
+  const isDynamic = pathname?.startsWith("/b/");
+  const fakturHref = isDynamic ? `/b/${activeBusiness.slug}/pembelian/faktur` : "/pembelian/faktur";
+
   const [poList, setPoList] = useState([
     {
       id: "PO-KF-202611-001",
@@ -226,7 +233,7 @@ export default function PurchaseOrderPage() {
                         Cetak Surat Pesanan
                       </Button>
                       {po.status === "SENT" && (
-                        <Link href="/pembelian/faktur">
+                        <Link href={fakturHref}>
                           <Button size="sm" className="h-7 text-xs bg-emerald-600 hover:bg-emerald-700">
                             Terima Faktur
                           </Button>

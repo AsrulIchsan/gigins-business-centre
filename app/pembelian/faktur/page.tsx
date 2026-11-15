@@ -2,6 +2,8 @@
 
 import React, { useState } from "react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { useBusinessStore } from "@/lib/business-store";
 import {
   FileText,
   Plus,
@@ -43,6 +45,12 @@ interface PurchaseInvoiceItem {
 }
 
 export default function FakturPembelianPage() {
+  const pathname = usePathname();
+  const { activeBusiness } = useBusinessStore();
+  const isDynamic = pathname?.startsWith("/b/");
+  const mobileHref = isDynamic ? `/b/${activeBusiness.slug}/pembelian/mobile` : "/pembelian/mobile";
+  const returHref = isDynamic ? `/b/${activeBusiness.slug}/pembelian/retur` : "/pembelian/retur";
+
   const [invoices, setInvoices] = useState([
     {
       id: "PUR-202611-001",
@@ -171,7 +179,7 @@ export default function FakturPembelianPage() {
         </div>
 
         <div className="flex items-center gap-2">
-          <Link href="/pembelian/mobile">
+          <Link href={mobileHref}>
             <Button variant="outline" size="sm" className="text-xs text-emerald-700 border-emerald-300">
               <Smartphone className="mr-1.5 h-4 w-4" />
               Mode Input Faktur HP
@@ -236,7 +244,7 @@ export default function FakturPembelianPage() {
                       </Badge>
                     </td>
                     <td className="p-3 text-right space-x-1.5">
-                      <Link href="/pembelian/retur">
+                      <Link href={returHref}>
                         <Button variant="outline" size="sm" className="h-7 text-xs text-rose-600 border-rose-200">
                           Retur ke PBF
                         </Button>

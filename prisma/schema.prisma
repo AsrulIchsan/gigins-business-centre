@@ -146,8 +146,9 @@ enum SaleReturnStatus {
 }
 
 enum OnlineChannel {
-  VMEDISMART
+  WEBSTORE_INTERNAL
   KLIKDOKTER
+  MARKETPLACE
   WEBSTORE
   OTHER
 }

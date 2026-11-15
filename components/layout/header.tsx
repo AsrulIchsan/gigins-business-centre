@@ -37,6 +37,20 @@ export function Header() {
   const [showRoleMenu, setShowRoleMenu] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
   const [showBusinessMenu, setShowBusinessMenu] = useState(false);
+  const searchInputRef = React.useRef<HTMLInputElement>(null);
+
+  // Global Keyboard Shortcut: F2 untuk fokus ke pencarian cepat
+  React.useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "F2") {
+        e.preventDefault();
+        searchInputRef.current?.focus();
+        searchInputRef.current?.select();
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, []);
 
   const getInitials = (name?: string) => {
     if (!name) return "U";
@@ -242,6 +256,7 @@ export function Header() {
         <div className="hidden xl:flex items-center w-72 relative">
           <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
           <input
+            ref={searchInputRef}
             type="text"
             placeholder={
               isPharmacy
@@ -287,7 +302,13 @@ export function Header() {
               Kas Awal: {formatRupiah(ACTIVE_SHIFT.openingCash)}
             </span>
           </div>
-          <Link href="/laporan/shift">
+          <Link
+            href={
+              pathname?.startsWith("/b/")
+                ? `/b/${activeBusiness.slug}/laporan/shift`
+                : "/laporan/shift"
+            }
+          >
             <Button
               variant="ghost"
               size="sm"
@@ -325,37 +346,69 @@ export function Header() {
               <div className="space-y-2 text-xs">
                 {isPharmacy ? (
                   <>
-                    <div className="p-2 bg-rose-50 border border-rose-200 rounded-lg flex items-start space-x-2">
+                    <Link
+                      href={
+                        pathname?.startsWith("/b/")
+                          ? `/b/${activeBusiness.slug}/laporan/stok-alert`
+                          : "/laporan/stok-alert"
+                      }
+                      onClick={() => setShowNotifications(false)}
+                      className="block p-2 bg-rose-50 hover:bg-rose-100/80 transition-colors border border-rose-200 rounded-lg flex items-start space-x-2"
+                    >
                       <AlertTriangle className="h-4 w-4 text-rose-600 shrink-0 mt-0.5" />
                       <div>
                         <p className="font-semibold text-rose-900 text-[11px]">Antasida Doen Kedaluwarsa</p>
-                        <p className="text-[10px] text-rose-700">Batch ATD-2024-K1 expired dalam 16 hari!</p>
+                        <p className="text-[10px] text-rose-700">Batch ATD-2024-K1 expired dalam 16 hari! &bull; Klik periksa</p>
                       </div>
-                    </div>
-                    <div className="p-2 bg-amber-50 border border-amber-200 rounded-lg flex items-start space-x-2">
+                    </Link>
+                    <Link
+                      href={
+                        pathname?.startsWith("/b/")
+                          ? `/b/${activeBusiness.slug}/laporan/stok-alert`
+                          : "/laporan/stok-alert"
+                      }
+                      onClick={() => setShowNotifications(false)}
+                      className="block p-2 bg-amber-50 hover:bg-amber-100/80 transition-colors border border-amber-200 rounded-lg flex items-start space-x-2"
+                    >
                       <Clock className="h-4 w-4 text-amber-600 shrink-0 mt-0.5" />
                       <div>
                         <p className="font-semibold text-amber-900 text-[11px]">Sanmol 500mg Batch 24A</p>
-                        <p className="text-[10px] text-amber-700">Expired 10 Des 2026 (H-26 hari)</p>
+                        <p className="text-[10px] text-amber-700">Expired 10 Des 2026 (H-26 hari) &bull; Klik restock</p>
                       </div>
-                    </div>
-                    <div className="p-2 bg-blue-50 border border-blue-200 rounded-lg flex items-start space-x-2">
+                    </Link>
+                    <Link
+                      href={
+                        pathname?.startsWith("/b/")
+                          ? `/b/${activeBusiness.slug}/online-orders`
+                          : "/online-orders"
+                      }
+                      onClick={() => setShowNotifications(false)}
+                      className="block p-2 bg-blue-50 hover:bg-blue-100/80 transition-colors border border-blue-200 rounded-lg flex items-start space-x-2"
+                    >
                       <ShoppingBag className="h-4 w-4 text-blue-600 shrink-0 mt-0.5" />
                       <div>
-                        <p className="font-semibold text-blue-900 text-[11px]">Order Baru VmedisMart</p>
-                        <p className="text-[10px] text-blue-700">Pesanan ORD-VM-001 perlu disiapkan</p>
+                        <p className="font-semibold text-blue-900 text-[11px]">Order Baru Webstore Apotik Tamansari</p>
+                        <p className="text-[10px] text-blue-700">Pesanan ORD-WEB-001 siap diproses ke POS</p>
                       </div>
-                    </div>
+                    </Link>
                   </>
                 ) : (
                   <>
-                    <div className="p-2 bg-amber-50 border border-amber-200 rounded-lg flex items-start space-x-2">
+                    <Link
+                      href={
+                        pathname?.startsWith("/b/")
+                          ? `/b/${activeBusiness.slug}/laporan/stok-alert`
+                          : "/laporan/stok-alert"
+                      }
+                      onClick={() => setShowNotifications(false)}
+                      className="block p-2 bg-amber-50 hover:bg-amber-100/80 transition-colors border border-amber-200 rounded-lg flex items-start space-x-2"
+                    >
                       <AlertTriangle className="h-4 w-4 text-amber-600 shrink-0 mt-0.5" />
                       <div>
                         <p className="font-semibold text-amber-900 text-[11px]">Stok Mobil RC Menipis</p>
                         <p className="text-[10px] text-amber-700">Sisa 2 Pcs di rak pajang, segera reorder ke DMC</p>
                       </div>
-                    </div>
+                    </Link>
                   </>
                 )}
               </div>

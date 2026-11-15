@@ -441,7 +441,7 @@ export default function DashboardPage() {
                       <div className="flex items-center gap-2">
                         <Badge
                           variant={
-                            order.channel === "VMEDISMART"
+                            order.channel === "WEBSTORE_INTERNAL" || order.channel === "WEBSTORE"
                               ? "cyan"
                               : order.channel === "KLIKDOKTER"
                               ? "success"
@@ -449,7 +449,9 @@ export default function DashboardPage() {
                           }
                           className="text-[9px]"
                         >
-                          {order.channel}
+                          {order.channel === "WEBSTORE_INTERNAL"
+                            ? "WEBSTORE TAMANSARI"
+                            : order.channel}
                         </Badge>
                         <span className="font-mono text-[10px] text-slate-400">
                           {order.orderNumber}

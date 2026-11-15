@@ -160,7 +160,7 @@ flowchart TD
 
     subgraph Integrations["External Integrations"]
         FONNTE["Fonnte API\n(WhatsApp)"]
-        VMEDIMART["VMedisMart API"]
+        WEBSTORE_API["Webstore Internal API"]
         KLIKDOKTER["KlikDokter API"]
         WEBSTORE["Webstore\nApotik Tamansari"]
         PAYMENT["Payment Gateway\n(QRIS / EDC)"]
@@ -1590,13 +1590,13 @@ Laporan shift mencakup:
 ```mermaid
 flowchart TD
     subgraph Eksternal["Platform Eksternal"]
-        VM["VMedisMart\nWebhook"]
+        VM["Katalog Online Internal\nWebhook"]
         KD["KlikDokter\nWebhook"]
         WS["Webstore\nApotik Tamansari\n(Next.js storefront)"]
     end
 
     subgraph Sistem["Apotik Tamansari Core"]
-        WH_VM["POST /api/v1/webhooks/vmedimart"]
+        WH_VM["POST /api/v1/webhooks/webstore-internal"]
         WH_KD["POST /api/v1/webhooks/klikdokter"]
         WH_WS["Internal API Call"]
         
@@ -1622,22 +1622,22 @@ flowchart TD
 ### 13.2 Webhook Handler
 
 ```typescript
-// app/api/v1/webhooks/vmedimart/route.ts
+// app/api/v1/webhooks/webstore-internal/route.ts
 export async function POST(request: Request) {
-  // 1. Verifikasi signature HMAC dari VMedisMart
-  const signature = request.headers.get('x-vmedimart-signature');
+  // 1. Verifikasi signature HMAC dari Webstore Internal
+  const signature = request.headers.get('x-webstore-signature');
   const isValid = verifyWebhookSignature(await request.text(), signature!);
   if (!isValid) return new Response('Unauthorized', { status: 401 });
 
   const rawOrder = await request.json();
 
   // 2. Normalisasi order ke format internal
-  const normalizedOrder = normalizeVmedisMartOrder(rawOrder);
+  const normalizedOrder = normalizeInternalOrder(rawOrder);
 
   // 3. Simpan sebagai OnlineOrder dengan status PENDING
   const onlineOrder = await prisma.onlineOrder.create({
     data: {
-      kanal: 'VMEDIMART',
+      kanal: 'WEBSTORE_INTERNAL',
       externalId: rawOrder.order_id,
       payload: rawOrder,
       status: 'PENDING',

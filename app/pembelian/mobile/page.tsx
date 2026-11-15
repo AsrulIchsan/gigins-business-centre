@@ -2,6 +2,8 @@
 
 import React, { useState } from "react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { useBusinessStore } from "@/lib/business-store";
 import {
   Truck,
   Camera,
@@ -19,6 +21,12 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 
 export default function MobilePembelianPage() {
+  const pathname = usePathname();
+  const { activeBusiness } = useBusinessStore();
+  const isDynamic = pathname?.startsWith("/b/");
+  const isPharmacy = activeBusiness.type === "PHARMACY";
+  const backHref = isDynamic ? `/b/${activeBusiness.slug}/pembelian/faktur` : "/pembelian/faktur";
+
   const [supplierId, setSupplierId] = useState(MOCK_SUPPLIERS[0].id);
   const [invoiceNumber, setInvoiceNumber] = useState("");
   const [batchNumber, setBatchNumber] = useState("BCH-NEW-01");
@@ -42,14 +50,16 @@ export default function MobilePembelianPage() {
   return (
     <div className="max-w-md mx-auto space-y-4 pb-20">
       {/* Mobile Header */}
-      <div className="bg-emerald-700 text-white p-4 rounded-b-2xl shadow-md sticky top-0 z-20">
+      <div className={`${isPharmacy ? "bg-emerald-700" : "bg-gradient-to-r from-amber-600 to-orange-600"} text-white p-4 rounded-b-2xl shadow-md sticky top-0 z-20`}>
         <div className="flex items-center justify-between">
-          <Link href="/" className="p-1 rounded-full hover:bg-emerald-800">
+          <Link href={backHref} className="p-1 rounded-full hover:bg-black/10">
             <ArrowLeft className="h-5 w-5" />
           </Link>
           <div className="text-center">
             <h1 className="font-bold text-sm">Penerimaan Faktur HP</h1>
-            <p className="text-[10px] text-emerald-200">Input Barang Datang Kurir PBF via HP</p>
+            <p className="text-[10px] text-white/80">
+              {isPharmacy ? "Input Barang Datang Kurir PBF via HP" : "Input Penerimaan Barang Masuk via HP"}
+            </p>
           </div>
           <div className="w-6" />
         </div>

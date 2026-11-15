@@ -90,7 +90,7 @@ export function Sidebar() {
           items: [
             { title: "Member & Promo", href: "/crm/member", icon: Users },
             { title: "WhatsApp Marketing", href: "/crm/whatsapp", icon: MessageSquare, badge: "WA" },
-            { title: "Pesanan Online (Vmedis/Klik)", href: "/online-orders", icon: Globe, badge: "3 Baru" },
+            { title: "Pesanan Online (Webstore/Klik)", href: "/online-orders", icon: Globe, badge: "3 Baru" },
           ],
         },
         {

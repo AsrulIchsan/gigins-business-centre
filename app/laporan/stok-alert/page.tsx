@@ -2,6 +2,8 @@
 
 import React, { useState } from "react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { useBusinessStore } from "@/lib/business-store";
 import {
   Clock,
   ShieldAlert,
@@ -22,6 +24,14 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 
 export default function StokAlertPage() {
+  const pathname = usePathname();
+  const { activeBusiness } = useBusinessStore();
+  const isDynamic = pathname?.startsWith("/b/");
+  const isPharmacy = activeBusiness.type === "PHARMACY";
+
+  const poHref = isDynamic ? `/b/${activeBusiness.slug}/pembelian/po` : "/pembelian/po";
+  const returHref = isDynamic ? `/b/${activeBusiness.slug}/pembelian/retur` : "/pembelian/retur";
+
   const [activeTab, setActiveTab] = useState<"EXPIRED" | "LOW_STOCK" | "FAST_MOVING">("EXPIRED");
   const [expiredFilter, setExpiredFilter] = useState<number>(90); // 30, 90, 180
 
@@ -179,9 +189,9 @@ export default function StokAlertPage() {
                         </span>
                       </td>
                       <td className="p-3 text-right space-x-1.5">
-                        <Link href="/pembelian/retur">
+                        <Link href={returHref}>
                           <Button size="sm" variant="outline" className="h-7 text-xs text-rose-600 border-rose-300">
-                            Retur PBF
+                            {isPharmacy ? "Retur PBF" : "Retur Supplier"}
                           </Button>
                         </Link>
                       </td>
@@ -237,7 +247,7 @@ export default function StokAlertPage() {
                         </Badge>
                       </td>
                       <td className="p-3 text-right">
-                        <Link href="/pembelian/po">
+                        <Link href={poHref}>
                           <Button size="sm" className="h-7 text-xs bg-emerald-600 hover:bg-emerald-700">
                             <Truck className="h-3 w-3 mr-1" />
                             Buat PO Restock
