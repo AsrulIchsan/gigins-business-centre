@@ -43,6 +43,7 @@ import {
   MockCustomer,
 } from "@/lib/mock-data";
 import { formatRupiah, calculateSellPrice } from "@/lib/utils";
+import { printThermalReceipt, ThermalPaperWidth } from "@/lib/thermal-printer";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -401,6 +402,45 @@ export default function PosPage() {
   // Receipt Modal state
   const [isReceiptOpen, setIsReceiptOpen] = useState(false);
   const [completedSale, setCompletedSale] = useState<any>(null);
+  const [thermalPaperWidth, setThermalPaperWidth] = useState<ThermalPaperWidth>("58mm");
+
+  const handlePrintReceipt = (width: ThermalPaperWidth = thermalPaperWidth) => {
+    if (!completedSale) return;
+    printThermalReceipt(
+      {
+        businessName: completedSale.businessName || activeBusiness?.name || "APOTIK TAMANSARI",
+        businessAddress: activeBusiness?.address || "Jl. Tamansari No. 45, Bandung",
+        businessPhone: activeBusiness?.phone || "022-2501234",
+        licenseNumber: activeBusiness?.licenseNumber || "SIPA: 19850412/SIPA-32.73/2022",
+        saleNumber: completedSale.saleNumber,
+        date: completedSale.date,
+        cashier: completedSale.cashier,
+        customerName: completedSale.customer?.name || "Pelanggan Umum",
+        customerTier: completedSale.customer?.tier,
+        doctorName: completedSale.doctor?.name,
+        saleType: completedSale.saleType,
+        items: completedSale.items.map((it: any) => ({
+          name: it.name,
+          qty: it.qty,
+          unitName: it.unitName,
+          sellPrice: it.sellPrice,
+          subtotal: it.subtotal,
+        })),
+        subtotal: completedSale.subtotal,
+        compoundingFee: completedSale.compoundingFee,
+        embalaseFee: completedSale.embalaseFee,
+        discountAmount: completedSale.discountAmount,
+        totalAmount: completedSale.totalAmount,
+        paymentMethod: completedSale.paymentMethod,
+        paymentNote: completedSale.paymentNote,
+        cashGiven: completedSale.cashGiven,
+        roundingAmount: completedSale.roundingAmount,
+        change: completedSale.change,
+        footerNote: activeBusiness?.type === "PHARMACY" ? "Semoga Lekas Sembuh" : "Terima Kasih atas Kunjungan Anda",
+      },
+      width
+    );
+  };
 
   // Add item to cart with FIFO batch assignment
   const addToCart = (product: MockProduct, unitIndex = 0) => {
@@ -1385,8 +1425,8 @@ export default function PosPage() {
                       type="button"
                       variant="outline"
                       size="sm"
-                      onClick={() => setIsReceiptOpen(true)}
-                      className="h-8 text-[11px] font-bold border-emerald-300 text-emerald-800 bg-white"
+                      onClick={() => handlePrintReceipt()}
+                      className="h-8 text-[11px] font-bold border-emerald-300 text-emerald-800 bg-white hover:bg-emerald-50"
                     >
                       <Printer className="w-3 h-3 mr-1" />
                       Cetak Struk Thermal
@@ -1541,14 +1581,38 @@ export default function PosPage() {
               </div>
             </div>
 
-            <DialogFooter className="gap-2 sm:gap-0">
+            {/* Pilihan Lebar Kertas Thermal (58mm vs 80mm) */}
+            <div className="flex items-center justify-between p-2.5 bg-slate-100 rounded-xl text-xs">
+              <span className="font-semibold text-slate-700 flex items-center gap-1.5">
+                <Printer className="w-3.5 h-3.5 text-slate-500" />
+                Format Ukuran Kertas:
+              </span>
+              <div className="flex gap-1.5">
+                {(["58mm", "80mm"] as ThermalPaperWidth[]).map((width) => (
+                  <button
+                    key={width}
+                    type="button"
+                    onClick={() => setThermalPaperWidth(width)}
+                    className={`px-3 py-1 rounded-lg text-xs font-bold border transition-colors ${
+                      thermalPaperWidth === width
+                        ? "bg-slate-900 text-white border-slate-900 shadow-2xs"
+                        : "bg-white text-slate-700 border-slate-300 hover:border-slate-400"
+                    }`}
+                  >
+                    {width === "58mm" ? "58mm (Mini)" : "80mm (Desktop)"}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <DialogFooter className="gap-2 sm:gap-2 flex-col sm:flex-row pt-1">
               <Button
-                variant="outline"
-                className="w-full sm:w-auto text-xs"
-                onClick={() => window.print()}
+                type="button"
+                className="w-full sm:w-auto text-xs bg-slate-900 hover:bg-black text-white font-bold flex items-center justify-center gap-1.5 shadow-sm"
+                onClick={() => handlePrintReceipt(thermalPaperWidth)}
               >
-                <Printer className="mr-1.5 h-4 w-4" />
-                Cetak Thermal (58/80mm)
+                <Printer className="h-4 w-4" />
+                Cetak Struk Thermal ({thermalPaperWidth})
               </Button>
               <Button
                 className="w-full sm:w-auto text-xs bg-green-600 hover:bg-green-700 text-white font-bold"
