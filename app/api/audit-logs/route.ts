@@ -88,7 +88,7 @@ export async function GET(request: NextRequest) {
   } catch (err: any) {
     console.error("[API AuditLogs GET Error]", err);
     return NextResponse.json(
-      { success: false, message: "Gagal memuat log aktivitas dan login." },
+      { success: false, message: "Gagal memuat log aktivitas dan login.", error: err?.message || String(err) },
       { status: 500 }
     );
   }

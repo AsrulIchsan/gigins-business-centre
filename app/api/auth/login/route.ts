@@ -319,7 +319,11 @@ export async function POST(request: NextRequest) {
   } catch (err: any) {
     console.error("[Auth Login Error]", err);
     return NextResponse.json(
-      { success: false, message: "Terjadi kesalahan internal server saat proses login." },
+      {
+        success: false,
+        message: "Terjadi kesalahan internal server saat proses login.",
+        error: err?.message || String(err),
+      },
       { status: 500 }
     );
   }
