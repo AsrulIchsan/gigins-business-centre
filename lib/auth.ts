@@ -341,4 +341,32 @@ export const FALLBACK_USERS: Record<string, FallbackUser> = {
       },
     ],
   },
+
+  // Aliases Resmi untuk Login Cepat
+  "owner@apotiktamansari.com": {
+    id: "usr-owner-gigin",
+    name: "Gigin",
+    email: "owner@apotiktamansari.com",
+    hashedPassword: BCRYPT_PASSWORD123,
+    role: "OWNER",
+    isActive: true,
+    businessAccesses: [
+      {
+        businessId: "biz-apotik-tamansari",
+        businessSlug: "apotik-tamansari",
+        businessName: "Apotik Tamansari",
+        businessType: "PHARMACY",
+        role: "OWNER",
+        permissions: DEFAULT_PERMISSIONS.OWNER,
+      },
+      {
+        businessId: "biz-toko-mainan-lelea",
+        businessSlug: "toko-mainan-pasar-lelea",
+        businessName: "Toko Mainan Pasar Lelea",
+        businessType: "RETAIL_TOYS",
+        role: "OWNER",
+        permissions: DEFAULT_PERMISSIONS.OWNER,
+      },
+    ],
+  },
 };

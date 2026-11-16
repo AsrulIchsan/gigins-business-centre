@@ -68,7 +68,7 @@ let lastDbCheckTime = 0;
 let isDbReachable = true;
 const DB_CHECK_INTERVAL_MS = 60 * 1000; // Check DB at most once a minute if offline
 
-async function checkDatabaseAvailable(): Promise<boolean> {
+export async function checkDatabaseAvailable(): Promise<boolean> {
   const now = Date.now();
   if (!isDbReachable && now - lastDbCheckTime < DB_CHECK_INTERVAL_MS) {
     return false;
