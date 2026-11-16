@@ -95,6 +95,8 @@ interface MasterDataState {
 
   updateProduct: (id: string, updates: Partial<MockProduct>) => MockProduct | null;
   updateProductStock: (id: string, newTotalStock: number, reason?: string) => void;
+  updateProductBatches: (id: string, batches: MockBatch[], reason?: string) => void;
+  addBatchToProduct: (id: string, batch: Omit<MockBatch, "id"> & { id?: string }) => MockBatch;
   updateProductPrice: (id: string, unitIndex: number, newSellPrice: number, newBuyPrice?: number) => void;
 }
 
@@ -273,6 +275,14 @@ export const useMasterDataStore = create<MasterDataState>()(
                   ...batches[0],
                   quantity: Math.max(0, batches[0].quantity + diff),
                 };
+              } else {
+                batches.push({
+                  id: `b-${id}-${Date.now().toString().slice(-4)}`,
+                  batchNumber: `BCH-${new Date().getFullYear()}-01`,
+                  expiredDate: "2027-12-31",
+                  quantity: newTotalStock,
+                  buyPrice: p.units[0]?.buyPrice || 1000,
+                });
               }
               return {
                 ...p,
@@ -284,6 +294,59 @@ export const useMasterDataStore = create<MasterDataState>()(
           });
           return { products: list };
         });
+      },
+
+      updateProductBatches: (id, batches) => {
+        set((state) => {
+          const currentList = state.products || INITIAL_PRODUCTS;
+          // Sort FIFO by expiration date
+          const sortedBatches = [...batches].sort(
+            (a, b) => new Date(a.expiredDate).getTime() - new Date(b.expiredDate).getTime()
+          );
+          const totalStock = sortedBatches.reduce((sum, b) => sum + Number(b.quantity || 0), 0);
+          const list = currentList.map((p) => {
+            if (p.id === id) {
+              return {
+                ...p,
+                batches: sortedBatches,
+                totalStock,
+              };
+            }
+            return p;
+          });
+          return { products: list };
+        });
+      },
+
+      addBatchToProduct: (id, batchData) => {
+        const newBatch: MockBatch = {
+          id: batchData.id || `b-${id}-${Date.now().toString().slice(-4)}`,
+          batchNumber: batchData.batchNumber.trim().toUpperCase(),
+          expiredDate: batchData.expiredDate,
+          quantity: Number(batchData.quantity || 0),
+          buyPrice: Number(batchData.buyPrice || 0),
+        };
+
+        set((state) => {
+          const currentList = state.products || INITIAL_PRODUCTS;
+          const list = currentList.map((p) => {
+            if (p.id === id) {
+              const updatedBatches = [...p.batches, newBatch].sort(
+                (a, b) => new Date(a.expiredDate).getTime() - new Date(b.expiredDate).getTime()
+              );
+              const totalStock = updatedBatches.reduce((sum, b) => sum + Number(b.quantity || 0), 0);
+              return {
+                ...p,
+                batches: updatedBatches,
+                totalStock,
+              };
+            }
+            return p;
+          });
+          return { products: list };
+        });
+
+        return newBatch;
       },
 
       updateProductPrice: (id, unitIndex, newSellPrice, newBuyPrice) => {

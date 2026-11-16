@@ -46,6 +46,7 @@ import {
   MockProduct,
   MockProductUnit,
   MockCustomer,
+  MockBatch,
 } from "@/lib/mock-data";
 import { formatRupiah, calculateSellPrice } from "@/lib/utils";
 import { printThermalReceipt, ThermalPaperWidth } from "@/lib/thermal-printer";
@@ -96,6 +97,7 @@ export default function PosPage() {
     addProduct,
     updateProduct,
     updateProductStock,
+    updateProductBatches,
     updateProductPrice,
   } = useMasterDataStore();
   const [saleType, setSaleType] = useState<"GENERAL" | "PRESCRIPTION" | "COMPOUNDING">("GENERAL");
@@ -310,7 +312,7 @@ export default function PosPage() {
       p.category.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  // ─── OWNER DRUG EDIT MODAL STATE & HANDLERS ──────────────────────────────
+  // ─── OWNER & KASIR DRUG EDIT MODAL STATE & HANDLERS ──────────────────────────────
   const [isEditDrugModalOpen, setIsEditDrugModalOpen] = useState(false);
   const [editingDrug, setEditingDrug] = useState<MockProduct | null>(null);
   const [editDrugForm, setEditDrugForm] = useState<{
@@ -322,6 +324,7 @@ export default function PosPage() {
     totalStock: number;
     stockAdjustmentReason: string;
     units: MockProductUnit[];
+    batches: MockBatch[];
   }>({
     name: "",
     genericName: "",
@@ -329,8 +332,9 @@ export default function PosPage() {
     barcode: "",
     baseUnit: "",
     totalStock: 0,
-    stockAdjustmentReason: "Penyesuaian stok fisik kasir",
+    stockAdjustmentReason: "Penyesuaian stok & batch fisik kasir",
     units: [],
+    batches: [],
   });
 
   const handleOpenEditDrugModal = (product: MockProduct) => {
@@ -342,8 +346,9 @@ export default function PosPage() {
       barcode: product.barcode,
       baseUnit: product.baseUnit,
       totalStock: product.totalStock,
-      stockAdjustmentReason: "Penyesuaian stok fisik kasir langsung oleh Owner",
+      stockAdjustmentReason: "Penyesuaian stok fisik & batch kasir langsung",
       units: JSON.parse(JSON.stringify(product.units)),
+      batches: JSON.parse(JSON.stringify(product.batches || [])),
     });
     setIsEditDrugModalOpen(true);
   };
@@ -351,6 +356,12 @@ export default function PosPage() {
   const handleSaveEditDrug = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingDrug) return;
+
+    // Sort batches FIFO by expiration
+    const sortedBatches = [...editDrugForm.batches].sort(
+      (a, b) => new Date(a.expiredDate).getTime() - new Date(b.expiredDate).getTime()
+    );
+    const computedTotalStock = sortedBatches.reduce((sum, b) => sum + Number(b.quantity || 0), 0);
 
     const oldData = {
       name: editingDrug.name,
@@ -367,26 +378,22 @@ export default function PosPage() {
       genericName: editDrugForm.genericName.trim(),
       category: editDrugForm.category.trim(),
       barcode: editDrugForm.barcode.trim(),
-      totalStock: Number(editDrugForm.totalStock),
+      totalStock: computedTotalStock,
       sellPrice: editDrugForm.units[0]?.sellPrice || 0,
       buyPrice: editDrugForm.units[0]?.buyPrice || 0,
     };
 
-    // Update in Zustand store
+    // Update in Zustand store (both product info, units, batches, and totalStock)
     updateProduct(editingDrug.id, {
       name: editDrugForm.name.trim(),
       genericName: editDrugForm.genericName.trim(),
       category: editDrugForm.category.trim(),
       barcode: editDrugForm.barcode.trim(),
       baseUnit: editDrugForm.baseUnit.trim(),
-      totalStock: Number(editDrugForm.totalStock),
+      totalStock: computedTotalStock,
       units: editDrugForm.units,
+      batches: sortedBatches,
     });
-
-    // If stock changed, adjust batches
-    if (editingDrug.totalStock !== Number(editDrugForm.totalStock)) {
-      updateProductStock(editingDrug.id, Number(editDrugForm.totalStock));
-    }
 
     // Call API for Activity Log
     try {
@@ -408,7 +415,7 @@ export default function PosPage() {
     }
 
     setIsEditDrugModalOpen(false);
-    alert(`Data obat "${editDrugForm.name}" (Stok: ${editDrugForm.totalStock}, Harga & Info) berhasil diperbarui oleh Owner!`);
+    alert(`Data obat "${editDrugForm.name}" (Stok: ${computedTotalStock} ${editDrugForm.baseUnit}, ${sortedBatches.length} Batch) berhasil diperbarui!`);
   };
 
   // ─── OWNER NEW DRUG MODAL STATE & HANDLERS ───────────────────────────────
@@ -1235,9 +1242,58 @@ export default function PosPage() {
                       <tr key={idx} className="hover:bg-slate-50/80 transition-colors">
                         <td className="py-2.5 px-2.5 text-center text-slate-400 font-semibold">{idx + 1}</td>
                         <td className="py-2.5 px-3">
-                          <p className="font-bold text-slate-800 font-sans">{item.name}</p>
-                          <div className="flex items-center gap-1.5 text-[10px] text-slate-500 font-mono">
-                            <span>Batch: {item.selectedBatchNumber}</span>
+                          <div className="flex items-center justify-between">
+                            <p className="font-bold text-slate-800 font-sans">{item.name}</p>
+                            {(() => {
+                              const prod = productList.find((p) => p.id === item.productId);
+                              if (prod) {
+                                return (
+                                  <button
+                                    type="button"
+                                    onClick={() => handleOpenEditDrugModal(prod)}
+                                    className="p-1 rounded text-amber-700 hover:bg-amber-100/60 transition-colors"
+                                    title="Edit Stok & Batch Obat Ini"
+                                  >
+                                    <Pencil className="h-3 w-3" />
+                                  </button>
+                                );
+                              }
+                              return null;
+                            })()}
+                          </div>
+                          <div className="flex flex-wrap items-center gap-1.5 text-[10px] text-slate-500 font-mono mt-0.5">
+                            {(() => {
+                              const prod = productList.find((p) => p.id === item.productId);
+                              if (prod && prod.batches && prod.batches.length > 1) {
+                                return (
+                                  <div className="flex items-center gap-1">
+                                    <span className="font-semibold text-slate-600">Batch:</span>
+                                    <select
+                                      value={item.selectedBatchNumber}
+                                      onChange={(e) => {
+                                        const bNum = e.target.value;
+                                        const targetB = prod.batches.find((b) => b.batchNumber === bNum);
+                                        const updatedCart = [...cart];
+                                        updatedCart[idx] = {
+                                          ...updatedCart[idx],
+                                          selectedBatchNumber: bNum,
+                                          expiredDate: targetB ? targetB.expiredDate : item.expiredDate,
+                                        };
+                                        setCart(updatedCart);
+                                      }}
+                                      className="text-[10px] font-mono bg-slate-100 hover:bg-slate-200 border border-slate-300 rounded px-1 py-0.5 text-slate-800 cursor-pointer"
+                                    >
+                                      {prod.batches.map((b) => (
+                                        <option key={b.id} value={b.batchNumber}>
+                                          {b.batchNumber} (Sisa: {b.quantity} {prod.baseUnit})
+                                        </option>
+                                      ))}
+                                    </select>
+                                  </div>
+                                );
+                              }
+                              return <span>Batch: {item.selectedBatchNumber}</span>;
+                            })()}
                             <span>&bull;</span>
                             <span>Exp: {item.expiredDate?.slice(0, 10)}</span>
                           </div>
@@ -1325,20 +1381,18 @@ export default function PosPage() {
                               Konsinyasi
                             </Badge>
                           )}
-                          {isOwnerMode && (
-                            <button
-                              type="button"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleOpenEditDrugModal(product);
-                              }}
-                              className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-50 hover:bg-amber-100 text-amber-700 border border-amber-300 flex items-center gap-1 transition-colors"
-                              title="Owner: Edit Nama, Stok, Harga & Info Obat"
-                            >
-                              <Pencil className="h-2.5 w-2.5 text-amber-600" />
-                              Edit
-                            </button>
-                          )}
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleOpenEditDrugModal(product);
+                            }}
+                            className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-50 hover:bg-amber-100 text-amber-700 border border-amber-300 flex items-center gap-1 transition-colors"
+                            title="Edit Nama, Stok, Batch & Harga Obat"
+                          >
+                            <Pencil className="h-2.5 w-2.5 text-amber-600" />
+                            Edit Stok & Batch
+                          </button>
                         </div>
                       </div>
 
@@ -1357,26 +1411,36 @@ export default function PosPage() {
                             {product.totalStock} {product.baseUnit}
                           </strong>
                         </span>
-                        {isOwnerMode && (
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleOpenEditDrugModal(product);
-                            }}
-                            className="text-[10px] text-amber-700 hover:underline flex items-center gap-0.5 font-medium"
-                            title="Klik untuk ubah stok langsung"
-                          >
-                            <Boxes className="h-3 w-3 text-amber-600" /> Ubah Stok
-                          </button>
-                        )}
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleOpenEditDrugModal(product);
+                          }}
+                          className="text-[10px] text-amber-700 hover:underline flex items-center gap-0.5 font-medium"
+                          title="Klik untuk ubah stok langsung"
+                        >
+                          <Boxes className="h-3 w-3 text-amber-600" /> Ubah Stok
+                        </button>
                       </div>
 
                       {fifoBatch && (
-                        <div className="mt-1 flex items-center gap-1.5 text-[10px] text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
-                          <Clock className="h-3 w-3 shrink-0" />
-                          <span className="font-mono">FIFO: {fifoBatch.batchNumber}</span>
-                          <span>(Sisa: {fifoBatch.quantity} {product.baseUnit})</span>
+                        <div
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleOpenEditDrugModal(product);
+                          }}
+                          className="mt-1 flex items-center justify-between text-[10px] text-emerald-800 bg-emerald-50 hover:bg-emerald-100 px-2 py-0.5 rounded border border-emerald-300 cursor-pointer transition-colors"
+                          title="Klik untuk kelola & edit batch FIFO obat ini"
+                        >
+                          <div className="flex items-center gap-1 font-mono">
+                            <Clock className="h-3 w-3 shrink-0 text-emerald-600" />
+                            <span>FIFO: {fifoBatch.batchNumber}</span>
+                            <span>(Sisa: {fifoBatch.quantity} {product.baseUnit})</span>
+                          </div>
+                          <span className="text-[9px] text-emerald-700 underline font-semibold flex items-center gap-0.5">
+                            <Pencil className="h-2.5 w-2.5" /> Edit
+                          </span>
                         </div>
                       )}
                     </div>
@@ -2231,7 +2295,7 @@ export default function PosPage() {
                 <div className="flex justify-between items-center">
                   <span className="font-bold text-amber-900 flex items-center gap-1.5 text-xs">
                     <Boxes className="h-4 w-4 text-amber-700" />
-                    Penyesuaian Stok Fisik Obat:
+                    Penyesuaian Total Stok Fisik Obat:
                   </span>
                   <span className="text-[11px] text-amber-800">
                     Stok Saat Ini: <strong>{editingDrug.totalStock} {editingDrug.baseUnit}</strong>
@@ -2246,7 +2310,27 @@ export default function PosPage() {
                     <Input
                       type="number"
                       value={editDrugForm.totalStock}
-                      onChange={(e) => setEditDrugForm({ ...editDrugForm, totalStock: Number(e.target.value) })}
+                      onChange={(e) => {
+                        const newTot = Number(e.target.value);
+                        const diff = newTot - editDrugForm.totalStock;
+                        const updatedBatches = [...editDrugForm.batches];
+                        if (updatedBatches.length > 0) {
+                          updatedBatches[0].quantity = Math.max(0, updatedBatches[0].quantity + diff);
+                        } else {
+                          updatedBatches.push({
+                            id: `b-${editingDrug.id}-new`,
+                            batchNumber: `BCH-${new Date().getFullYear()}-01`,
+                            expiredDate: "2027-12-31",
+                            quantity: newTot,
+                            buyPrice: editDrugForm.units[0]?.buyPrice || 1000,
+                          });
+                        }
+                        setEditDrugForm({
+                          ...editDrugForm,
+                          totalStock: newTot,
+                          batches: updatedBatches,
+                        });
+                      }}
                       className="h-9 bg-white font-bold text-base border-amber-300 focus:border-amber-500"
                     />
                     {editDrugForm.totalStock !== editingDrug.totalStock && (
@@ -2267,6 +2351,122 @@ export default function PosPage() {
                       className="h-9 bg-white text-xs border-amber-300"
                     />
                   </div>
+                </div>
+              </div>
+
+              {/* Manajemen Batch FIFO & Stok Per Batch */}
+              <div className="p-3.5 bg-emerald-50/70 border border-emerald-300 rounded-xl space-y-2.5">
+                <div className="flex justify-between items-center">
+                  <span className="font-bold text-emerald-950 flex items-center gap-1.5 text-xs">
+                    <Clock className="h-4 w-4 text-emerald-700" />
+                    Manajemen Batch FIFO ({editDrugForm.batches.length} Batch Aktif):
+                  </span>
+                  <Button
+                    type="button"
+                    size="sm"
+                    onClick={() => {
+                      const newB: MockBatch = {
+                        id: `b-${editingDrug.id}-${Date.now().toString().slice(-4)}`,
+                        batchNumber: `BCH-${new Date().getFullYear()}-${Math.floor(100 + Math.random() * 900)}`,
+                        expiredDate: "2027-12-31",
+                        quantity: 20,
+                        buyPrice: editDrugForm.units[0]?.buyPrice || 1000,
+                      };
+                      const updated = [...editDrugForm.batches, newB];
+                      const newTot = updated.reduce((s, b) => s + Number(b.quantity || 0), 0);
+                      setEditDrugForm({
+                        ...editDrugForm,
+                        batches: updated,
+                        totalStock: newTot,
+                      });
+                    }}
+                    className="h-6 px-2 text-[10px] bg-emerald-600 hover:bg-emerald-700 text-white font-bold flex items-center gap-1"
+                  >
+                    <Plus className="h-3 w-3" />
+                    Tambah Batch
+                  </Button>
+                </div>
+
+                <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
+                  {editDrugForm.batches.map((batch, bIdx) => (
+                    <div
+                      key={batch.id || bIdx}
+                      className="p-2.5 bg-white rounded-lg border border-emerald-200 grid grid-cols-12 gap-2 items-center"
+                    >
+                      <div className="col-span-4">
+                        <label className="text-[10px] font-semibold text-slate-600 block">No. Batch:</label>
+                        <Input
+                          value={batch.batchNumber}
+                          onChange={(e) => {
+                            const val = e.target.value.toUpperCase();
+                            const updated = [...editDrugForm.batches];
+                            updated[bIdx].batchNumber = val;
+                            setEditDrugForm({ ...editDrugForm, batches: updated });
+                          }}
+                          className="h-7 text-xs font-mono font-bold"
+                        />
+                      </div>
+
+                      <div className="col-span-4">
+                        <label className="text-[10px] font-semibold text-slate-600 block">Expired (ED):</label>
+                        <Input
+                          type="date"
+                          value={batch.expiredDate ? batch.expiredDate.slice(0, 10) : ""}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            const updated = [...editDrugForm.batches];
+                            updated[bIdx].expiredDate = val;
+                            setEditDrugForm({ ...editDrugForm, batches: updated });
+                          }}
+                          className="h-7 text-xs"
+                        />
+                      </div>
+
+                      <div className="col-span-3">
+                        <label className="text-[10px] font-bold text-emerald-800 block">
+                          Stok ({editingDrug.baseUnit}):
+                        </label>
+                        <Input
+                          type="number"
+                          min="0"
+                          value={batch.quantity}
+                          onChange={(e) => {
+                            const val = Math.max(0, Number(e.target.value));
+                            const updated = [...editDrugForm.batches];
+                            updated[bIdx].quantity = val;
+                            const newTot = updated.reduce((s, b) => s + Number(b.quantity || 0), 0);
+                            setEditDrugForm({
+                              ...editDrugForm,
+                              batches: updated,
+                              totalStock: newTot,
+                            });
+                          }}
+                          className="h-7 text-xs font-bold text-emerald-900 border-emerald-300"
+                        />
+                      </div>
+
+                      <div className="col-span-1 flex justify-end pt-3">
+                        {editDrugForm.batches.length > 1 && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const updated = editDrugForm.batches.filter((_, i) => i !== bIdx);
+                              const newTot = updated.reduce((s, b) => s + Number(b.quantity || 0), 0);
+                              setEditDrugForm({
+                                ...editDrugForm,
+                                batches: updated,
+                                totalStock: newTot,
+                              });
+                            }}
+                            className="p-1 text-rose-500 hover:text-rose-700 hover:bg-rose-50 rounded"
+                            title="Hapus Batch"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  ))}
                 </div>
               </div>
 
