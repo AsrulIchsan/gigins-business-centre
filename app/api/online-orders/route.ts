@@ -200,13 +200,40 @@ export async function PATCH(request: NextRequest) {
     }
 
     // Find in liveOrders
-    const target = liveOrders.find(
+    let target = liveOrders.find(
       (o) =>
         (orderId && o.id === orderId) ||
         (orderNumber && o.orderNumber.toLowerCase() === orderNumber.toLowerCase())
     );
 
     if (!target) {
+      try {
+        const dbOrder = await prisma.onlineOrder.findFirst({
+          where: {
+            OR: [
+              ...(orderId ? [{ id: orderId }] : []),
+              ...(orderNumber ? [{ orderNumber }] : []),
+            ],
+          },
+          include: { customer: true, items: true },
+        });
+        if (dbOrder) {
+          const updated = await prisma.onlineOrder.update({
+            where: { id: dbOrder.id },
+            data: { ...(status ? { status: status as any } : {}) },
+            include: { customer: true, items: true },
+          });
+          return NextResponse.json(
+            {
+              success: true,
+              message: `Pesanan ${updated.orderNumber} berhasil diperbarui. Status: ${updated.status}`,
+              order: updated,
+            },
+            { headers: NO_CACHE_HEADERS }
+          );
+        }
+      } catch {}
+
       return NextResponse.json(
         { success: false, message: "Pesanan tidak ditemukan" },
         { status: 404 }

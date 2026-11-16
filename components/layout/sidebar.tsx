@@ -25,6 +25,7 @@ import {
   Building2,
   ShieldCheck,
   History,
+  Clock,
   LogOut,
   User,
   X,
@@ -63,6 +64,7 @@ export function Sidebar() {
           items: [
             { title: "Dashboard Overview", href: "/", icon: LayoutDashboard },
             { title: "Kasir POS (Desktop)", href: "/pos", icon: ShoppingCart },
+            { title: "Riwayat Pesanan (POS & Online)", href: "/pos?tab=history", icon: Clock },
             { title: "Kasir POS Mobile (HP)", href: "/pos/mobile", icon: Smartphone, badge: "HP/Cam", isMobileSpecial: true },
             { title: "Retur Penjualan", href: "/pos/retur", icon: RotateCcw },
           ],
@@ -120,6 +122,7 @@ export function Sidebar() {
           items: [
             { title: "Dashboard Overview", href: "/", icon: LayoutDashboard },
             { title: "Kasir POS Mainan (Desktop)", href: "/pos", icon: ShoppingCart },
+            { title: "Riwayat Pesanan (POS & Online)", href: "/pos?tab=history", icon: Clock },
             { title: "Kasir HP (Scan Barcode)", href: "/pos/mobile", icon: Smartphone, badge: "HP/Cam", isMobileSpecial: true },
             { title: "Retur Penjualan", href: "/pos/retur", icon: RotateCcw },
           ],
@@ -250,9 +253,10 @@ export function Sidebar() {
                         ? `/b/${currentSlug}/dashboard`
                         : `/b/${currentSlug}${item.href}`
                       : item.href;
-                const isActive = isDynamicRoute
-                  ? pathname === targetHref
-                  : pathname === item.href;
+                const targetPathOnly = targetHref.split("?")[0];
+                const isActive = !item.href.includes("?") && (
+                  isDynamicRoute ? pathname === targetPathOnly : pathname === item.href
+                );
                 const Icon = item.icon;
                 return (
                   <Link

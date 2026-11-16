@@ -163,6 +163,22 @@ export default function StoreCheckoutPage() {
       const data = await res.json();
       if (data.success && data.order) {
         clearCart();
+
+        // Broadcast to Cashier POS immediately for live alert & sound notification
+        if (typeof window !== "undefined") {
+          try {
+            const ch = new BroadcastChannel("new_online_order");
+            ch.postMessage({ order: data.order, timestamp: Date.now() });
+            ch.close();
+          } catch {}
+          try {
+            localStorage.setItem(
+              "last_new_online_order",
+              JSON.stringify({ order: data.order, timestamp: Date.now() })
+            );
+          } catch {}
+        }
+
         // Redirect to order success page
         router.push(
           `/store/order-success?orderNumber=${encodeURIComponent(

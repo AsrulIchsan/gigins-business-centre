@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   Search,
   Plus,
@@ -32,6 +32,11 @@ import {
   Layers,
   ShoppingBag,
   RotateCcw,
+  Bell,
+  BellOff,
+  Volume2,
+  Eye,
+  X,
 } from "lucide-react";
 import { useBusinessStore } from "@/lib/business-store";
 import { useMasterDataStore } from "@/lib/master-data-store";
@@ -44,6 +49,12 @@ import {
 } from "@/lib/mock-data";
 import { formatRupiah, calculateSellPrice } from "@/lib/utils";
 import { printThermalReceipt, ThermalPaperWidth } from "@/lib/thermal-printer";
+import PosOrderHistory, { UnifiedOrder } from "@/components/pos/pos-order-history";
+import {
+  playNewOrderChime,
+  isAudioNotificationEnabled,
+  setAudioNotificationEnabled,
+} from "@/lib/audio-notification";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -92,6 +103,196 @@ export default function PosPage() {
   const [cart, setCart] = useState<CartItem[]>([]);
   const [selectedCustomer, setSelectedCustomer] = useState<MockCustomer | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
+
+  // POS Navigation: Layar Kasir vs Riwayat Pesanan (POS & Online)
+  const [activePosTab, setActivePosTab] = useState<"cashier" | "history">("cashier");
+  const [pendingOnlineCount, setPendingOnlineCount] = useState<number>(0);
+  const [globalIncomingAlert, setGlobalIncomingAlert] = useState<any | null>(null);
+  const [soundEnabled, setSoundEnabled] = useState<boolean>(true);
+  const knownOnlineIdsRef = useRef<Set<string>>(new Set());
+  const isFirstCheckRef = useRef<boolean>(true);
+
+  // Initialize sound settings
+  useEffect(() => {
+    setSoundEnabled(isAudioNotificationEnabled());
+  }, []);
+
+  const toggleSound = () => {
+    const next = !soundEnabled;
+    setSoundEnabled(next);
+    setAudioNotificationEnabled(next);
+    if (next) {
+      playNewOrderChime(0.25);
+    }
+  };
+
+  // Check URL query parameters (e.g. ?tab=history or ?fromOnlineOrder=...)
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const urlParams = new URLSearchParams(window.location.search);
+      const tabParam = urlParams.get("tab");
+      const fromOrder = urlParams.get("fromOnlineOrder") || urlParams.get("onlineOrderId");
+      if (tabParam === "history") {
+        setActivePosTab("history");
+      }
+      if (fromOrder) {
+        fetch(`/api/online-orders?orderNumber=${encodeURIComponent(fromOrder)}&_t=${Date.now()}`)
+          .then((r) => r.json())
+          .then((d) => {
+            if (d.success && d.order) {
+              handleLoadOnlineOrderToCart(d.order);
+            }
+          })
+          .catch(() => {});
+      }
+    }
+  }, []);
+
+  // Real-time polling for incoming online orders & count (runs constantly even on cashier tab)
+  useEffect(() => {
+    const checkIncomingOnlineOrders = async () => {
+      try {
+        const slug = activeBusiness?.slug || "apotik-tamansari";
+        const res = await fetch(`/api/online-orders?businessSlug=${slug}&_t=${Date.now()}`, {
+          cache: "no-store",
+        });
+        const data = await res.json();
+        if (data.success && Array.isArray(data.orders)) {
+          const pendings = data.orders.filter((o: any) => o.status === "PENDING");
+          setPendingOnlineCount(pendings.length);
+
+          if (!isFirstCheckRef.current) {
+            const newArrivals = data.orders.filter(
+              (o: any) => !knownOnlineIdsRef.current.has(o.id) && o.status === "PENDING"
+            );
+            if (newArrivals.length > 0) {
+              const newest = newArrivals[0];
+              if (soundEnabled) {
+                playNewOrderChime(0.4);
+              }
+              setGlobalIncomingAlert(newest);
+            }
+          }
+
+          data.orders.forEach((o: any) => knownOnlineIdsRef.current.add(o.id));
+          isFirstCheckRef.current = false;
+        }
+      } catch {}
+    };
+
+    checkIncomingOnlineOrders();
+    const interval = setInterval(checkIncomingOnlineOrders, 4000);
+    return () => clearInterval(interval);
+  }, [activeBusiness?.slug, soundEnabled]);
+
+  // Real-time BroadcastChannel & localStorage listener for cross-tab events
+  useEffect(() => {
+    let newOrderChannel: BroadcastChannel | null = null;
+    let orderSyncChannel: BroadcastChannel | null = null;
+
+    try {
+      newOrderChannel = new BroadcastChannel("new_online_order");
+      newOrderChannel.onmessage = (e) => {
+        if (e.data?.order) {
+          if (soundEnabled) playNewOrderChime(0.4);
+          setGlobalIncomingAlert(e.data.order);
+          setPendingOnlineCount((prev) => prev + 1);
+        }
+      };
+    } catch {}
+
+    try {
+      orderSyncChannel = new BroadcastChannel("order_status_sync");
+      orderSyncChannel.onmessage = () => {
+        fetch(`/api/online-orders?businessSlug=${activeBusiness?.slug || "apotik-tamansari"}&_t=${Date.now()}`)
+          .then((r) => r.json())
+          .then((d) => {
+            if (d.success && Array.isArray(d.orders)) {
+              setPendingOnlineCount(d.orders.filter((o: any) => o.status === "PENDING").length);
+            }
+          })
+          .catch(() => {});
+      };
+    } catch {}
+
+    const handleStorageEvent = (e: StorageEvent) => {
+      if (e.key === "last_new_online_order") {
+        try {
+          const parsed = JSON.parse(e.newValue || "{}");
+          if (parsed.order) {
+            if (soundEnabled) playNewOrderChime(0.4);
+            setGlobalIncomingAlert(parsed.order);
+            setPendingOnlineCount((prev) => prev + 1);
+          }
+        } catch {}
+      }
+    };
+
+    window.addEventListener("storage", handleStorageEvent);
+
+    return () => {
+      if (newOrderChannel) newOrderChannel.close();
+      if (orderSyncChannel) orderSyncChannel.close();
+      window.removeEventListener("storage", handleStorageEvent);
+    };
+  }, [activeBusiness?.slug, soundEnabled]);
+
+  // Load online order into active POS cart
+  const handleLoadOnlineOrderToCart = (order: any) => {
+    const newCartItems: CartItem[] = [];
+
+    for (const item of order.items || []) {
+      const pName = item.productName || item.name || "Obat";
+      const matched = (products && products.length > 0 ? products : INITIAL_PRODUCTS).find(
+        (p) =>
+          p.id === item.productId ||
+          p.name.toLowerCase() === pName.toLowerCase() ||
+          p.genericName?.toLowerCase() === pName.toLowerCase()
+      );
+
+      const fifoBatch = matched?.batches?.[0];
+      const pPrice = Number(item.price || item.sellPrice || (matched ? matched.units[0]?.sellPrice : 0) || 5000);
+      const pQty = Number(item.qty || item.quantity || 1);
+
+      newCartItems.push({
+        productId: matched?.id || item.productId || `prod-online-${Date.now()}`,
+        name: pName,
+        unitName: item.unitName || matched?.units?.[0]?.unitName || "Pcs",
+        conversionFactor: 1,
+        qty: pQty,
+        sellPrice: pPrice,
+        subtotal: pPrice * pQty,
+        selectedBatchNumber: fifoBatch?.batchNumber || "BCH-ONLINE",
+        expiredDate: fifoBatch?.expiredDate || "2027-12-31",
+      });
+    }
+
+    setCart(newCartItems);
+
+    if (order.customerName) {
+      const existingCust = customers.find(
+        (c) =>
+          c.name.toLowerCase() === order.customerName.toLowerCase() ||
+          (order.phone && c.phone === order.phone)
+      );
+
+      if (existingCust) {
+        setSelectedCustomer(existingCust);
+      } else {
+        setSelectedCustomer({
+          id: `c-online-${Date.now()}`,
+          name: order.customerName,
+          phone: order.phone || "-",
+          memberCode: "MBR-ONLINE",
+          tier: "REGULAR",
+          points: 0,
+          discountPct: 0,
+        });
+      }
+    }
+
+    setActivePosTab("cashier");
+  };
 
   // Owner Mode State (Owner can edit stock, prices, drug details, & input new drugs)
   const isOwner = activeBusiness?.role === "OWNER";
@@ -593,6 +794,9 @@ export default function PosPage() {
             sellPrice: i.sellPrice,
             selectedBatchNumber: i.selectedBatchNumber,
           })),
+          customer: selectedCustomer,
+          doctor: selectedDoctor,
+          prescriptionNumber: saleType === "PRESCRIPTION" ? prescriptionNumber : undefined,
           subtotal: itemsSubtotal,
           compoundingFee: saleType === "COMPOUNDING" ? compoundingFee : 0,
           embalaseFee: saleType === "COMPOUNDING" ? embalaseFee : 0,
@@ -603,6 +807,8 @@ export default function PosPage() {
           roundingAmount,
           change: finalChange,
           userId: "user-kasir-siti",
+          cashier: ACTIVE_SHIFT.cashierName,
+          businessName: activeBusiness?.name || "Apotik Tamansari",
         }),
       });
     } catch (err) {
@@ -613,6 +819,15 @@ export default function PosPage() {
       setIsReceiptOpen(true);
       setCart([]);
       setCashGiven(0);
+
+      // Broadcast POS sale sync so order history gets live update immediately
+      if (typeof window !== "undefined") {
+        try {
+          const ch = new BroadcastChannel("pos_sales_sync");
+          ch.postMessage({ saleNumber, sale: saleRecord, timestamp: Date.now() });
+          ch.close();
+        } catch {}
+      }
     }
   };
 
@@ -644,34 +859,153 @@ export default function PosPage() {
           </p>
         </div>
 
-        {/* Mode Selector Tabs */}
-        <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-lg">
+        {/* View Switcher: Kasir POS vs Riwayat Pesanan (POS & Online) */}
+        <div className="flex items-center gap-2 flex-wrap">
+          <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-lg">
+            <button
+              onClick={() => setActivePosTab("cashier")}
+              className={`px-3 py-1.5 rounded-md text-xs font-bold transition-all flex items-center gap-1.5 ${
+                activePosTab === "cashier"
+                  ? "bg-white text-emerald-800 shadow-xs"
+                  : "text-slate-600 hover:text-slate-900"
+              }`}
+            >
+              <Store className="w-3.5 h-3.5" />
+              <span>Layar Kasir POS</span>
+            </button>
+            <button
+              onClick={() => setActivePosTab("history")}
+              className={`relative px-3 py-1.5 rounded-md text-xs font-bold transition-all flex items-center gap-1.5 ${
+                activePosTab === "history"
+                  ? "bg-white text-emerald-800 shadow-xs"
+                  : "text-slate-600 hover:text-slate-900"
+              }`}
+            >
+              <Clock className="w-3.5 h-3.5" />
+              <span>Riwayat Pesanan</span>
+              {pendingOnlineCount > 0 && (
+                <span className="bg-rose-500 text-white text-[10px] font-black px-1.5 py-0.2 rounded-full animate-pulse">
+                  {pendingOnlineCount}
+                </span>
+              )}
+            </button>
+          </div>
+
+          {/* Sound Bell Toggle */}
           <button
-            onClick={() => setSaleType("GENERAL")}
-            className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-all ${
-              saleType === "GENERAL" ? "bg-white text-emerald-800 shadow-xs" : "text-slate-600"
+            onClick={toggleSound}
+            title={soundEnabled ? "Notifikasi Suara Bel Masuk: Aktif" : "Notifikasi Suara Bel Masuk: Mute"}
+            className={`px-2.5 py-1.5 rounded-lg border text-xs font-semibold flex items-center gap-1 transition-all ${
+              soundEnabled
+                ? "bg-amber-50 border-amber-300 text-amber-800 hover:bg-amber-100"
+                : "bg-slate-100 border-slate-300 text-slate-400 hover:bg-slate-200"
             }`}
           >
-            Obat Bebas (OTC)
-          </button>
-          <button
-            onClick={() => setSaleType("PRESCRIPTION")}
-            className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-all ${
-              saleType === "PRESCRIPTION" ? "bg-white text-emerald-800 shadow-xs" : "text-slate-600"
-            }`}
-          >
-            Resep Dokter
-          </button>
-          <button
-            onClick={() => setSaleType("COMPOUNDING")}
-            className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-all ${
-              saleType === "COMPOUNDING" ? "bg-white text-emerald-800 shadow-xs" : "text-slate-600"
-            }`}
-          >
-            Obat Racikan
+            {soundEnabled ? (
+              <Bell className="w-3.5 h-3.5 text-amber-600 animate-bounce" />
+            ) : (
+              <BellOff className="w-3.5 h-3.5 text-slate-400" />
+            )}
+            <span className="hidden md:inline">{soundEnabled ? "Bel Aktif" : "Mute"}</span>
           </button>
         </div>
       </div>
+
+      {/* INCOMING ONLINE ORDER FLOATING ALERT BANNER */}
+      {globalIncomingAlert && (
+        <div className="bg-gradient-to-r from-amber-500 via-rose-500 to-amber-600 text-white p-3.5 rounded-xl shadow-lg flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 animate-pulse border-2 border-amber-300">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center shrink-0">
+              <Bell className="w-5 h-5 animate-bounce text-white" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="bg-white text-rose-700 text-[10px] font-black uppercase px-2 py-0.5 rounded-full tracking-wider">
+                  PESANAN ONLINE BARU MASUK
+                </span>
+                <span className="text-xs font-mono font-bold text-amber-100">
+                  {globalIncomingAlert.orderNumber}
+                </span>
+              </div>
+              <p className="text-sm font-bold text-white mt-0.5">
+                {globalIncomingAlert.customerName} &bull; {formatRupiah(globalIncomingAlert.totalAmount)}
+              </p>
+              <p className="text-[11px] text-amber-100">
+                {globalIncomingAlert.channelLabel || "Webstore Apotik Tamansari"} ({globalIncomingAlert.items?.length || 1} produk) &bull; Segera cek dan proses pesanan!
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 self-end sm:self-center">
+            <Button
+              size="sm"
+              onClick={() => {
+                setActivePosTab("history");
+                setGlobalIncomingAlert(null);
+              }}
+              className="bg-white hover:bg-amber-50 text-slate-900 font-bold text-xs h-8 shadow-xs"
+            >
+              <Eye className="w-3.5 h-3.5 mr-1 text-rose-600" />
+              Lihat di Riwayat Pesanan
+            </Button>
+            <button
+              onClick={() => setGlobalIncomingAlert(null)}
+              className="text-white hover:text-amber-200 p-1.5 rounded-lg hover:bg-white/10 transition-colors"
+              title="Tutup Alert"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* MAIN VIEW CONTENT: RIWAYAT PESANAN vs LAYAR KASIR */}
+      {activePosTab === "history" ? (
+        <PosOrderHistory
+          businessSlug={activeBusiness?.slug || "apotik-tamansari"}
+          businessName={activeBusiness?.name || "Apotik Tamansari"}
+          businessAddress={activeBusiness?.address || "Jl. Tamansari No. 45, Bandung"}
+          businessPhone={activeBusiness?.phone || "022-2501234"}
+          currentCashier={ACTIVE_SHIFT.cashierName}
+          onSwitchToCashier={() => setActivePosTab("cashier")}
+          onLoadOrderToPOS={handleLoadOnlineOrderToCart}
+        />
+      ) : (
+        <div className="space-y-4">
+          {/* Sub-Mode Selector Tabs (OTC / Resep / Racikan) */}
+          <div className="flex items-center justify-between gap-2 bg-white p-2.5 rounded-xl border">
+            <div className="flex items-center gap-2 text-xs font-semibold text-slate-700">
+              <span className="text-slate-500">Kategori Transaksi Kasir:</span>
+              <span className="font-bold text-emerald-800">
+                {saleType === "GENERAL" ? "Obat Bebas (OTC)" : saleType === "PRESCRIPTION" ? "Resep Dokter" : "Obat Racikan"}
+              </span>
+            </div>
+            <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-lg">
+              <button
+                onClick={() => setSaleType("GENERAL")}
+                className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-all ${
+                  saleType === "GENERAL" ? "bg-white text-emerald-800 shadow-xs" : "text-slate-600"
+                }`}
+              >
+                Obat Bebas (OTC)
+              </button>
+              <button
+                onClick={() => setSaleType("PRESCRIPTION")}
+                className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-all ${
+                  saleType === "PRESCRIPTION" ? "bg-white text-emerald-800 shadow-xs" : "text-slate-600"
+                }`}
+              >
+                Resep Dokter
+              </button>
+              <button
+                onClick={() => setSaleType("COMPOUNDING")}
+                className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-all ${
+                  saleType === "COMPOUNDING" ? "bg-white text-emerald-800 shadow-xs" : "text-slate-600"
+                }`}
+              >
+                Obat Racikan
+              </button>
+            </div>
+          </div>
 
       {/* ALFAMART STYLE DIGITAL REGISTER DISPLAY MONITOR (TAMPILAN MONITOR KASIR RITEL) */}
       <div className="bg-slate-950 border-2 border-slate-800 text-white rounded-xl p-3 sm:p-4 shadow-md">
@@ -1451,8 +1785,10 @@ export default function PosPage() {
           </Card>
         </div>
       </div>
+    </div>
+  )}
 
-      {/* RECEIPT MODAL & WHATSAPP SHARE */}
+  {/* RECEIPT MODAL & WHATSAPP SHARE */}
       {completedSale && (
         <Dialog open={isReceiptOpen} onOpenChange={setIsReceiptOpen}>
           <DialogContent onClose={() => setIsReceiptOpen(false)} className="max-w-md">
