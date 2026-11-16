@@ -19,9 +19,14 @@ export async function POST(request: NextRequest) {
         request.headers.get("x-real-ip") ??
         "127.0.0.1";
 
+      const primaryBiz = session.businessAccesses[0];
       await logActivity({
         userId: session.user.id,
-        businessId: session.businessAccesses[0]?.businessId,
+        userName: session.user.name,
+        userRole: session.user.platformRole,
+        businessId: primaryBiz?.businessId,
+        businessName: primaryBiz?.businessName ?? "Gigin's Business Centre",
+        businessSlug: primaryBiz?.businessSlug ?? "all",
         module: "USER",
         action: "LOGOUT",
         entityId: session.user.id,

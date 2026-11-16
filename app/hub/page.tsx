@@ -6,7 +6,7 @@
  * Menampilkan ringkasan semua unit bisnis, login history, dan activity log terbaru.
  */
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import {
   Building2, Pill, Gamepad2, TrendingUp, Users, ShoppingCart,
@@ -63,6 +63,48 @@ function formatRupiah(n: number) {
 export default function HubPage() {
   const { user } = useAuth();
   const [activeTab, setActiveTab] = useState<"overview" | "login" | "activity">("overview");
+  const [loginHistory, setLoginHistory] = useState(MOCK_LOGIN_HISTORY);
+  const [activityLog, setActivityLog] = useState(MOCK_ACTIVITY_LOG);
+
+  useEffect(() => {
+    async function loadRecentAudit() {
+      try {
+        const res = await fetch("/api/audit-logs?limit=5", { cache: "no-store" });
+        const data = await res.json();
+        if (data.success) {
+          if (Array.isArray(data.loginLogs) && data.loginLogs.length > 0) {
+            setLoginHistory(
+              data.loginLogs.slice(0, 5).map((l: any) => ({
+                id: l.id,
+                user: `${l.userName} (${l.role})`,
+                business: l.businessName || "Semua Bisnis",
+                ip: l.ipAddress || "-",
+                device: l.device || "-",
+                status: l.status || "SUCCESS",
+                time: l.time || "-",
+              }))
+            );
+          }
+          if (Array.isArray(data.activityLogs) && data.activityLogs.length > 0) {
+            setActivityLog(
+              data.activityLogs.slice(0, 5).map((a: any) => ({
+                id: a.id,
+                user: a.userName,
+                business: a.businessName,
+                module: a.module,
+                action: a.action,
+                desc: a.description,
+                time: a.time,
+              }))
+            );
+          }
+        }
+      } catch (err) {
+        console.error("Gagal memuat log audit di Hub:", err);
+      }
+    }
+    loadRecentAudit();
+  }, []);
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -224,7 +266,7 @@ export default function HubPage() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100">
-                    {MOCK_LOGIN_HISTORY.map((log) => (
+                    {loginHistory.map((log) => (
                       <tr key={log.id} className="hover:bg-gray-50">
                         <td className="py-3 text-gray-500 whitespace-nowrap">{log.time}</td>
                         <td className="py-3 font-medium text-gray-900">{log.user}</td>
@@ -261,7 +303,7 @@ export default function HubPage() {
             {/* Audit Trail Tab */}
             {activeTab === "activity" && (
               <div className="space-y-3">
-                {MOCK_ACTIVITY_LOG.map((log) => {
+                {activityLog.map((log) => {
                   const actionColors: Record<string, string> = {
                     CREATE: "bg-blue-50 text-blue-700",
                     UPDATE: "bg-amber-50 text-amber-700",

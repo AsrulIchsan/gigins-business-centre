@@ -5,7 +5,7 @@
  * Halaman Audit Trail — riwayat aktivitas & perubahan data per cabang bisnis.
  */
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import {
@@ -124,17 +124,64 @@ export default function AuditLogPage() {
 
   const [selectedModule, setSelectedModule] = useState("Semua");
   const [selectedAction, setSelectedAction] = useState("Semua");
-  const [selectedLog, setSelectedLog] = useState<(typeof ALL_MOCK_LOGS)[0] | null>(null);
+  const [logsList, setLogsList] = useState(ALL_MOCK_LOGS);
+  const [selectedLog, setSelectedLog] = useState<any | null>(null);
 
-  const filtered = ALL_MOCK_LOGS.filter((log) => {
-    if (log.businessSlug !== slug) return false;
+  useEffect(() => {
+    async function loadLogs() {
+      try {
+        const res = await fetch(`/api/audit-logs?businessSlug=${slug}`, { cache: "no-store" });
+        const data = await res.json();
+        if (data.success && Array.isArray(data.activityLogs) && data.activityLogs.length > 0) {
+          const mapped = data.activityLogs.map((a: any) => ({
+            id: a.id,
+            businessSlug: a.businessSlug,
+            user: a.userName,
+            role: a.userRole,
+            module: a.module,
+            action: a.action,
+            entity: a.entityName || a.entityId,
+            desc: a.description,
+            time: a.time,
+            oldData: a.oldData,
+            newData: a.newData,
+          }));
+          setLogsList(mapped);
+        }
+      } catch (err) {
+        console.error("Gagal memuat log audit cabang:", err);
+      }
+    }
+    loadLogs();
+  }, [slug]);
+
+  const filtered = logsList.filter((log) => {
+    if (log.businessSlug !== slug && log.businessSlug !== "all") return false;
     if (selectedModule !== "Semua" && log.module !== selectedModule) return false;
     if (selectedAction !== "Semua" && log.action !== selectedAction) return false;
     return true;
   });
 
   function handleExport() {
-    alert(`Mengunduh file laporan audit trail ${businessName} (Format CSV/Excel siap dicetak)...`);
+    const headers = ["Waktu", "User", "Role", "Modul", "Aksi", "Entitas", "Deskripsi"];
+    const rows = filtered.map((l) => [
+      `"${l.time}"`,
+      `"${l.user}"`,
+      `"${l.role}"`,
+      `"${l.module}"`,
+      `"${l.action}"`,
+      `"${l.entity}"`,
+      `"${l.desc.replace(/"/g, '""')}"`,
+    ]);
+
+    const csvContent = "data:text/csv;charset=utf-8," + [headers.join(","), ...rows.map((e) => e.join(","))].join("\n");
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", `audit-trail-${slug}-${new Date().toISOString().slice(0, 10)}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   }
 
   return (

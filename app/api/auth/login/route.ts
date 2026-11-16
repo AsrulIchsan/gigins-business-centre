@@ -16,7 +16,7 @@ import {
   TokenPayload,
   AuthSession,
 } from "@/lib/auth";
-import { logLogin } from "@/lib/logger";
+import { logLogin, logActivity } from "@/lib/logger";
 
 export async function POST(request: NextRequest) {
   try {
@@ -107,6 +107,11 @@ export async function POST(request: NextRequest) {
     if (!userRecord) {
       await logLogin({
         userId: "unknown",
+        userName: `Percobaan Login Tak Dikenal`,
+        userEmail: email,
+        role: "UNKNOWN",
+        businessName: "Portal Utama",
+        businessSlug: "all",
         ipAddress,
         userAgent,
         deviceInfo: userAgent,
@@ -124,7 +129,12 @@ export async function POST(request: NextRequest) {
     if (!userRecord.isActive) {
       await logLogin({
         userId: userRecord.id,
+        userName: userRecord.name,
+        userEmail: userRecord.email,
+        role: userRecord.role,
         businessId: userRecord.businessAccesses[0]?.businessId,
+        businessName: userRecord.businessAccesses[0]?.businessName ?? "Gigin's Business Centre",
+        businessSlug: userRecord.businessAccesses[0]?.businessSlug ?? "all",
         ipAddress,
         userAgent,
         deviceInfo: userAgent,
@@ -147,7 +157,12 @@ export async function POST(request: NextRequest) {
     if (!isPasswordValid) {
       await logLogin({
         userId: userRecord.id,
+        userName: userRecord.name,
+        userEmail: userRecord.email,
+        role: userRecord.role,
         businessId: userRecord.businessAccesses[0]?.businessId,
+        businessName: userRecord.businessAccesses[0]?.businessName ?? "Gigin's Business Centre",
+        businessSlug: userRecord.businessAccesses[0]?.businessSlug ?? "all",
         ipAddress,
         userAgent,
         deviceInfo: userAgent,
@@ -161,14 +176,35 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 6. Login Sukses — Catat ke LoginHistory
+    // 6. Login Sukses — Catat ke LoginHistory & ActivityLog
+    const primaryBiz = userRecord.businessAccesses[0];
     await logLogin({
       userId: userRecord.id,
-      businessId: userRecord.businessAccesses[0]?.businessId,
+      userName: userRecord.name,
+      userEmail: userRecord.email,
+      role: userRecord.role,
+      businessId: primaryBiz?.businessId,
+      businessName: primaryBiz?.businessName ?? "Gigin's Business Centre",
+      businessSlug: primaryBiz?.businessSlug ?? "all",
       ipAddress,
       userAgent,
       deviceInfo: userAgent,
       status: "SUCCESS",
+    }).catch(() => {});
+
+    await logActivity({
+      userId: userRecord.id,
+      userName: userRecord.name,
+      userRole: userRecord.role,
+      businessId: primaryBiz?.businessId,
+      businessName: primaryBiz?.businessName ?? "Gigin's Business Centre",
+      businessSlug: primaryBiz?.businessSlug ?? "all",
+      module: "USER",
+      action: "LOGIN",
+      entityId: userRecord.id,
+      entityName: userRecord.name,
+      description: `Pengguna ${userRecord.name} (${userRecord.role}) berhasil login ke sistem.`,
+      ipAddress,
     }).catch(() => {});
 
     // 7. Bangun session token & JWT

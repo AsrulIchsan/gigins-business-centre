@@ -4,6 +4,7 @@
  */
 
 import { prisma } from "@/lib/prisma";
+import { appendLoginLog, appendActivityLog } from "@/lib/audit-storage";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -29,7 +30,11 @@ export type ActivityAction =
 
 export interface LogActivityParams {
   userId: string;
+  userName?: string;
+  userRole?: string;
   businessId?: string;
+  businessName?: string;
+  businessSlug?: string;
   accessId?: string;
   module: ActivityModule;
   action: ActivityAction;
@@ -43,7 +48,12 @@ export interface LogActivityParams {
 
 export interface LogLoginParams {
   userId: string;
+  userName?: string;
+  userEmail?: string;
+  role?: string;
   businessId?: string;
+  businessName?: string;
+  businessSlug?: string;
   accessId?: string;
   ipAddress?: string;
   userAgent?: string;
@@ -52,68 +62,152 @@ export interface LogLoginParams {
   failReason?: string;
 }
 
+// ─── Fast Database Availability Cache ───────────────────────────────────────
+
+let lastDbCheckTime = 0;
+let isDbReachable = true;
+const DB_CHECK_INTERVAL_MS = 60 * 1000; // Check DB at most once a minute if offline
+
+async function checkDatabaseAvailable(): Promise<boolean> {
+  const now = Date.now();
+  if (!isDbReachable && now - lastDbCheckTime < DB_CHECK_INTERVAL_MS) {
+    return false;
+  }
+  lastDbCheckTime = now;
+  try {
+    const pingPromise = prisma.$queryRaw`SELECT 1`;
+    const timeoutPromise = new Promise((_, reject) =>
+      setTimeout(() => reject(new Error("DB ping timeout")), 400)
+    );
+    await Promise.race([pingPromise, timeoutPromise]);
+    isDbReachable = true;
+    return true;
+  } catch {
+    isDbReachable = false;
+    return false;
+  }
+}
+
 // ─── Core Loggers ─────────────────────────────────────────────────────────────
 
 /**
  * Log an activity / audit trail entry.
  * Call this after any significant create/update/delete/void operation.
- *
- * @example
- * await logActivity({
- *   userId: session.user.id,
- *   businessId: "biz-xxx",
- *   module: "PRODUCT",
- *   action: "UPDATE",
- *   entityId: product.id,
- *   entityName: product.name,
- *   oldData: { sellPrice: 5000 },
- *   newData: { sellPrice: 5500 },
- *   description: `Harga jual ${product.name} diubah dari Rp 5.000 → Rp 5.500`,
- * });
+ * Persists to disk storage and optionally syncs to Prisma PostgreSQL if available.
  */
 export async function logActivity(params: LogActivityParams): Promise<void> {
+  // 1. Always persist to disk-backed audit storage
   try {
-    await prisma.activityLog.create({
-      data: {
-        userId: params.userId,
-        businessId: params.businessId ?? null,
-        accessId: params.accessId ?? null,
-        module: params.module as any,
-        action: params.action as any,
-        entityId: params.entityId ?? null,
-        entityName: params.entityName ?? null,
-        oldData: (params.oldData as any) ?? undefined,
-        newData: (params.newData as any) ?? undefined,
-        description: params.description,
-        ipAddress: params.ipAddress ?? null,
-      },
+    await appendActivityLog({
+      userId: params.userId,
+      userName: params.userName,
+      userRole: params.userRole,
+      businessName: params.businessName,
+      businessSlug: params.businessSlug,
+      module: params.module,
+      action: params.action,
+      entityId: params.entityId,
+      entityName: params.entityName,
+      description: params.description,
+      ipAddress: params.ipAddress,
+      oldData: params.oldData,
+      newData: params.newData,
     });
   } catch (err) {
-    // Never let logging failure crash main flow
-    console.error("[ActivityLog] Failed to write log:", err);
+    console.error("[AuditStorage] Failed to append activity log:", err);
+  }
+
+  // 2. Dual-write to Prisma if connected and user exists
+  try {
+    if (params.userId && params.userId !== "unknown") {
+      const dbOnline = await checkDatabaseAvailable();
+      if (!dbOnline) return;
+
+      const userExists = await prisma.user
+        .findUnique({
+          where: { id: params.userId },
+          select: { id: true },
+        })
+        .catch(() => null);
+
+      if (userExists) {
+        await prisma.activityLog.create({
+          data: {
+            userId: params.userId,
+            businessId: params.businessId ?? null,
+            accessId: params.accessId ?? null,
+            module: params.module as any,
+            action: params.action as any,
+            entityId: params.entityId ?? null,
+            entityName: params.entityName ?? null,
+            oldData: (params.oldData as any) ?? undefined,
+            newData: (params.newData as any) ?? undefined,
+            description: params.description,
+            ipAddress: params.ipAddress ?? null,
+          },
+        });
+      }
+    }
+  } catch {
+    // Database offline / fallback mode: disk storage is our source of truth
   }
 }
 
 /**
  * Log a login attempt (success or failure).
- * Call this from your auth API route on every login attempt.
+ * Call this from your auth API route on every login attempt from any device.
+ * Persists to disk storage and optionally syncs to Prisma PostgreSQL if available.
  */
 export async function logLogin(params: LogLoginParams): Promise<void> {
+  // 1. Always persist to disk-backed audit storage
   try {
-    await prisma.loginHistory.create({
-      data: {
-        userId: params.userId,
-        businessId: params.businessId ?? null,
-        accessId: params.accessId ?? null,
-        ipAddress: params.ipAddress ?? null,
-        userAgent: params.userAgent ?? null,
-        deviceInfo: params.deviceInfo ?? null,
-        status: params.status as any,
-        failReason: params.failReason ?? null,
-      },
+    await appendLoginLog({
+      userId: params.userId,
+      userName: params.userName || (params.userId === "unknown" ? "Pengguna Tak Dikenal" : params.userId),
+      userEmail: params.userEmail || (params.userId.includes("@") ? params.userId : "-"),
+      role: params.role || "STAFF",
+      businessName: params.businessName || "Gigin's Business Centre",
+      businessSlug: params.businessSlug || "all",
+      ipAddress: params.ipAddress,
+      userAgent: params.userAgent,
+      deviceInfo: params.deviceInfo,
+      status: params.status,
+      failReason: params.failReason,
     });
   } catch (err) {
-    console.error("[LoginHistory] Failed to write login log:", err);
+    console.error("[AuditStorage] Failed to append login log:", err);
+  }
+
+  // 2. Dual-write to Prisma if connected and user exists
+  try {
+    if (params.userId && params.userId !== "unknown") {
+      const dbOnline = await checkDatabaseAvailable();
+      if (!dbOnline) return;
+
+      const userExists = await prisma.user
+        .findUnique({
+          where: { id: params.userId },
+          select: { id: true },
+        })
+        .catch(() => null);
+
+      if (userExists) {
+        await prisma.loginHistory.create({
+          data: {
+            userId: params.userId,
+            businessId: params.businessId ?? null,
+            accessId: params.accessId ?? null,
+            ipAddress: params.ipAddress ?? null,
+            userAgent: params.userAgent ?? null,
+            deviceInfo: params.deviceInfo ?? null,
+            status: params.status as any,
+            failReason: params.failReason ?? null,
+          },
+        });
+      }
+    }
+  } catch {
+    // Database offline / fallback mode: disk storage is our source of truth
   }
 }
 
