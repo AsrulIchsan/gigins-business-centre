@@ -1803,7 +1803,7 @@ export default function PosPage() {
             </DialogHeader>
 
             {/* Printable Digital Receipt Mockup */}
-            <div className="bg-slate-50 border border-dashed border-slate-300 p-4 rounded-xl font-mono text-xs space-y-2 text-slate-800">
+            <div className="bg-slate-50 border border-dashed border-slate-300 p-4 rounded-xl font-mono text-xs space-y-2 text-slate-800 max-h-[46vh] overflow-y-auto custom-modal-scroll">
               <div className="text-center border-b pb-2">
                 <p className="font-bold text-sm uppercase">{completedSale.businessName || "APOTIK TAMANSARI"}</p>
                 <p className="text-[10px] text-slate-500">Jl. Tamansari No. 45, Bandung &bull; 022-2501234</p>
@@ -2143,7 +2143,7 @@ export default function PosPage() {
       {/* MODAL: EDIT DATA OBAT LANGSUNG DI POS OLEH OWNER */}
       {editingDrug && (
         <Dialog open={isEditDrugModalOpen} onOpenChange={setIsEditDrugModalOpen}>
-          <DialogContent onClose={() => setIsEditDrugModalOpen(false)} className="max-w-xl max-h-[90vh] overflow-y-auto">
+          <DialogContent onClose={() => setIsEditDrugModalOpen(false)} className="max-w-xl">
             <DialogHeader>
               <div className="flex items-center justify-between">
                 <DialogTitle className="flex items-center gap-2 text-amber-800">
@@ -2350,7 +2350,7 @@ export default function PosPage() {
 
       {/* MODAL: INPUT OBAT BARU LANGSUNG DI POS (OWNER) */}
       <Dialog open={isAddDrugModalOpen} onOpenChange={setIsAddDrugModalOpen}>
-        <DialogContent onClose={() => setIsAddDrugModalOpen(false)} className="max-w-xl max-h-[90vh] overflow-y-auto">
+        <DialogContent onClose={() => setIsAddDrugModalOpen(false)} className="max-w-xl">
           <DialogHeader>
             <div className="flex items-center justify-between">
               <DialogTitle className="flex items-center gap-2 text-emerald-800">

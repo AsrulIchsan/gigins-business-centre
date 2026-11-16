@@ -1237,7 +1237,7 @@ export default function PosOrderHistory({
             </DialogHeader>
 
             {/* DIGITAL RECEIPT PREVIEW (Alfamart / Pharmacy Monospace Style) */}
-            <div className="bg-slate-50 border border-dashed border-slate-300 p-4 rounded-xl font-mono text-xs space-y-2 text-slate-800 max-h-[60vh] overflow-y-auto">
+            <div className="bg-slate-50 border border-dashed border-slate-300 p-4 rounded-xl font-mono text-xs space-y-2 text-slate-800 max-h-[46vh] overflow-y-auto custom-modal-scroll">
               {/* Header Apotek */}
               <div className="text-center pb-2 border-b border-dashed border-slate-300 space-y-0.5">
                 <p className="font-bold text-sm tracking-wide">{businessName}</p>
@@ -1443,7 +1443,7 @@ export default function PosOrderHistory({
                   <img
                     src={selectedProofOrder.paymentProof}
                     alt="Bukti Transfer"
-                    className="max-h-80 w-auto rounded object-contain shadow-xs"
+                    className="max-h-64 sm:max-h-72 w-auto rounded object-contain shadow-xs"
                   />
                 </div>
               ) : (

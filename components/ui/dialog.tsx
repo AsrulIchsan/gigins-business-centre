@@ -30,14 +30,19 @@ const Dialog: React.FC<DialogProps> = ({ open, onOpenChange, children }) => {
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+    <div className="fixed inset-0 z-50 overflow-y-auto overflow-x-hidden">
       {/* Backdrop */}
       <div
         className="fixed inset-0 bg-black/60 backdrop-blur-sm transition-opacity"
         onClick={() => onOpenChange(false)}
       />
-      {/* Dialog body */}
-      <div className="relative z-50 w-full max-w-lg">{children}</div>
+      {/* Scrollable centering container */}
+      <div className="flex min-h-full items-center justify-center p-3 sm:p-4 md:p-6 text-center">
+        {/* Dialog body container without restrictive max-w so DialogContent controls width */}
+        <div className="relative z-50 w-full flex justify-center text-left my-auto">
+          {children}
+        </div>
+      </div>
     </div>
   );
 };
@@ -49,7 +54,9 @@ const DialogContent = React.forwardRef<
   <div
     ref={ref}
     className={cn(
-      "relative w-full rounded-2xl border bg-white p-6 shadow-2xl animate-in fade-in-90 zoom-in-95 max-h-[90vh] overflow-y-auto",
+      "relative w-full max-w-lg rounded-2xl border border-slate-200 bg-white shadow-2xl text-left",
+      "max-h-[86vh] md:max-h-[74vh] flex flex-col overflow-hidden",
+      "animate-in fade-in-90 zoom-in-95",
       className
     )}
     {...props}
@@ -57,12 +64,16 @@ const DialogContent = React.forwardRef<
     {onClose && (
       <button
         onClick={onClose}
-        className="absolute right-4 top-4 rounded-full p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition-colors"
+        type="button"
+        className="absolute right-3.5 top-3.5 z-30 rounded-full p-1.5 text-slate-400 bg-white/90 hover:bg-slate-100 hover:text-slate-700 transition-colors focus:outline-none focus:ring-2 focus:ring-slate-300"
+        aria-label="Tutup"
       >
         <X className="h-5 w-5" />
       </button>
     )}
-    {children}
+    <div className="overflow-y-auto overflow-x-hidden p-5 sm:p-6 overscroll-contain flex-1 custom-modal-scroll">
+      {children}
+    </div>
   </div>
 ));
 DialogContent.displayName = "DialogContent";
@@ -72,7 +83,10 @@ const DialogHeader: React.FC<React.HTMLAttributes<HTMLDivElement>> = ({
   ...props
 }) => (
   <div
-    className={cn("flex flex-col space-y-1.5 text-center sm:text-left mb-4", className)}
+    className={cn(
+      "flex flex-col space-y-1.5 text-left mb-4 pr-8 shrink-0",
+      className
+    )}
     {...props}
   />
 );
@@ -82,7 +96,10 @@ const DialogTitle: React.FC<React.HTMLAttributes<HTMLHeadingElement>> = ({
   ...props
 }) => (
   <h2
-    className={cn("text-lg font-semibold leading-none tracking-tight text-slate-900", className)}
+    className={cn(
+      "text-base sm:text-lg font-bold leading-tight tracking-tight text-slate-900",
+      className
+    )}
     {...props}
   />
 );
@@ -100,7 +117,7 @@ const DialogFooter: React.FC<React.HTMLAttributes<HTMLDivElement>> = ({
 }) => (
   <div
     className={cn(
-      "flex flex-col-reverse sm:flex-row sm:justify-end sm:space-x-2 mt-6 pt-4 border-t",
+      "flex flex-col-reverse sm:flex-row sm:justify-end gap-2 sm:gap-2 mt-5 pt-3 border-t border-slate-200 shrink-0",
       className
     )}
     {...props}
