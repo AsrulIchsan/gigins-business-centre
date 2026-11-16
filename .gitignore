@@ -27,9 +27,6 @@ yarn-error.log*
 .env*.local
 .env
 
-# local audit & runtime data
-/data/
-
 # vercel
 .vercel
 

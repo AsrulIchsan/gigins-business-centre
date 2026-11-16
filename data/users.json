@@ -1,0 +1,194 @@
+[
+  {
+    "id": "usr-owner-gigin",
+    "name": "Gigin",
+    "email": "admin@apotiktamansari.com",
+    "phone": "0812-9988-7766",
+    "password": "admin123",
+    "hashedPassword": "$2b$10$7ifwoN0/orh3IZ2027UThuiaUjnBS1WQMQliZ43XyQVpVMO4A3KZS",
+    "role": "OWNER",
+    "isActive": true,
+    "assignedBusinesses": [
+      {
+        "slug": "apotik-tamansari",
+        "name": "Apotik Tamansari",
+        "type": "PHARMACY",
+        "role": "OWNER",
+        "permissions": [
+          "can_void_sale",
+          "can_edit_price",
+          "can_view_hpp",
+          "can_stock_opname",
+          "can_approve_return",
+          "can_manage_users",
+          "can_view_reports",
+          "can_view_finance",
+          "can_delete_product",
+          "can_edit_purchase",
+          "can_approve_opname",
+          "can_manage_promo",
+          "can_export_data"
+        ]
+      },
+      {
+        "slug": "toko-mainan-pasar-lelea",
+        "name": "Toko Mainan Pasar Lelea",
+        "type": "RETAIL_TOYS",
+        "role": "OWNER",
+        "permissions": [
+          "can_void_sale",
+          "can_edit_price",
+          "can_view_hpp",
+          "can_stock_opname",
+          "can_approve_return",
+          "can_manage_users",
+          "can_view_reports",
+          "can_view_finance",
+          "can_delete_product",
+          "can_edit_purchase",
+          "can_approve_opname",
+          "can_manage_promo",
+          "can_export_data"
+        ]
+      }
+    ],
+    "lastLogin": "Sesi Aktif"
+  },
+  {
+    "id": "usr-01",
+    "name": "apt. Nurul Aulia, S.Farm",
+    "email": "nurul.aulia@apotiktamansari.com",
+    "phone": "0812-3456-7801",
+    "password": "nurul123",
+    "hashedPassword": "$2b$10$MfbT7uJ5fmoFjLKxkjjBleADaVaCET0iRAf5yPC9TgyPSwir0xT9S",
+    "role": "MANAJER",
+    "isActive": true,
+    "assignedBusinesses": [
+      {
+        "slug": "apotik-tamansari",
+        "name": "Apotik Tamansari",
+        "type": "PHARMACY",
+        "role": "MANAGER",
+        "permissions": [
+          "can_void_sale",
+          "can_edit_price",
+          "can_view_hpp",
+          "can_stock_opname",
+          "can_approve_return",
+          "can_view_reports",
+          "can_view_finance",
+          "can_edit_purchase",
+          "can_approve_opname",
+          "can_manage_promo"
+        ]
+      }
+    ],
+    "lastLogin": "Hari ini, 07:15"
+  },
+  {
+    "id": "usr-02",
+    "name": "Siti Rahma, A.Md.Farm",
+    "email": "kasir@apotiktamansari.com",
+    "phone": "0813-8821-9902",
+    "password": "kasir123",
+    "hashedPassword": "$2b$10$BUzG.yj8MFpfJzucglLHzefYzDruOV3YBAAp4.tiPeZG5XW8gC62e",
+    "role": "KASIR",
+    "isActive": true,
+    "assignedBusinesses": [
+      {
+        "slug": "apotik-tamansari",
+        "name": "Apotik Tamansari",
+        "type": "PHARMACY",
+        "role": "KASIR",
+        "permissions": [
+          "can_stock_opname"
+        ]
+      }
+    ],
+    "lastLogin": "Hari ini, 07:00"
+  },
+  {
+    "id": "usr-03",
+    "name": "Budi Santoso",
+    "email": "budi@pasarlelea.com",
+    "phone": "0856-7788-1234",
+    "password": "budi123",
+    "hashedPassword": "$2b$10$v2CN73pi3bJpPYMbScUysugvAWcAGvm2CTCaw24RXN/phbdSnvUDi",
+    "role": "MANAJER",
+    "isActive": true,
+    "assignedBusinesses": [
+      {
+        "slug": "toko-mainan-pasar-lelea",
+        "name": "Toko Mainan Pasar Lelea",
+        "type": "RETAIL_TOYS",
+        "role": "MANAGER",
+        "permissions": [
+          "can_void_sale",
+          "can_edit_price",
+          "can_view_hpp",
+          "can_stock_opname",
+          "can_approve_return",
+          "can_view_reports",
+          "can_view_finance",
+          "can_edit_purchase",
+          "can_approve_opname",
+          "can_manage_promo"
+        ]
+      }
+    ],
+    "lastLogin": "Kemarin, 14:22"
+  },
+  {
+    "id": "usr-04",
+    "name": "Ahmad Fauzi",
+    "email": "ahmad@pasarlelea.com",
+    "phone": "0819-3344-5566",
+    "password": "ahmad123",
+    "hashedPassword": "$2b$10$SrayF2NI6iAvhlWWeSfNLexAXY8NOT1HafluYHSyt2J30CNet4gRC",
+    "role": "KASIR",
+    "isActive": false,
+    "assignedBusinesses": [
+      {
+        "slug": "toko-mainan-pasar-lelea",
+        "name": "Toko Mainan Pasar Lelea",
+        "type": "RETAIL_TOYS",
+        "role": "KASIR",
+        "permissions": [
+          "can_stock_opname"
+        ]
+      }
+    ],
+    "lastLogin": "7 hari lalu (Nonaktif)"
+  },
+  {
+    "id": "usr-05",
+    "name": "Dewi Lestari",
+    "email": "dewi.multicabang@gigins.com",
+    "phone": "0811-2233-4455",
+    "password": "dewi123",
+    "hashedPassword": "$2b$10$dZLnD78ttjm1./bjae.3I.XS7xQ3tNNnM5U1/qM6npLXzkNGvnS9K",
+    "role": "KASIR",
+    "isActive": true,
+    "assignedBusinesses": [
+      {
+        "slug": "apotik-tamansari",
+        "name": "Apotik Tamansari",
+        "type": "PHARMACY",
+        "role": "KASIR",
+        "permissions": [
+          "can_stock_opname"
+        ]
+      },
+      {
+        "slug": "toko-mainan-pasar-lelea",
+        "name": "Toko Mainan Pasar Lelea",
+        "type": "RETAIL_TOYS",
+        "role": "KASIR",
+        "permissions": [
+          "can_stock_opname"
+        ]
+      }
+    ],
+    "lastLogin": "Kemarin, 08:30"
+  }
+]

@@ -1,5 +1,6 @@
 import fs from "fs";
 import path from "path";
+import os from "os";
 import bcrypt from "bcryptjs";
 import { BusinessRole, Permission, DEFAULT_PERMISSIONS } from "./auth";
 
@@ -26,12 +27,24 @@ export interface StoredUser {
   lastLogin?: string;
 }
 
-const DATA_DIR = path.join(process.cwd(), "data");
-const USERS_FILE = path.join(DATA_DIR, "users.json");
+// Storage paths: CWD (committed seed) and TMP (writable in Vercel Serverless)
+const CWD_DATA_DIR = path.join(process.cwd(), "data");
+const CWD_USERS_FILE = path.join(CWD_DATA_DIR, "users.json");
+const TMP_DATA_DIR = path.join(os.tmpdir(), "gigins_data");
+const TMP_USERS_FILE = path.join(TMP_DATA_DIR, "users.json");
 
-function ensureDataDir() {
-  if (!fs.existsSync(DATA_DIR)) {
-    fs.mkdirSync(DATA_DIR, { recursive: true });
+// In-Memory Global Store to preserve runtime modifications across function calls in serverless
+const globalUserStore = globalThis as unknown as {
+  __gigins_users?: StoredUser[];
+};
+
+function ensureDirSafe(dirPath: string) {
+  try {
+    if (!fs.existsSync(dirPath)) {
+      fs.mkdirSync(dirPath, { recursive: true });
+    }
+  } catch {
+    // Ignore read-only filesystem errors silently
   }
 }
 
@@ -177,27 +190,69 @@ const INITIAL_OFFICIAL_USERS: StoredUser[] = [
 // ─── Storage Operations ──────────────────────────────────────────────────────
 
 export function readStoredUsers(): StoredUser[] {
-  ensureDataDir();
-  try {
-    if (!fs.existsSync(USERS_FILE)) {
-      fs.writeFileSync(USERS_FILE, JSON.stringify(INITIAL_OFFICIAL_USERS, null, 2), "utf-8");
-      return INITIAL_OFFICIAL_USERS;
-    }
-    const raw = fs.readFileSync(USERS_FILE, "utf-8");
-    const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) && parsed.length > 0 ? parsed : INITIAL_OFFICIAL_USERS;
-  } catch (err) {
-    console.error("[UserStorage] Failed to read users file:", err);
-    return INITIAL_OFFICIAL_USERS;
+  // 1. If in-memory cache is populated, return it immediately
+  if (globalUserStore.__gigins_users && globalUserStore.__gigins_users.length > 0) {
+    return globalUserStore.__gigins_users;
   }
+
+  // 2. Try reading from writable TMP directory first (has latest runtime modifications)
+  try {
+    if (fs.existsSync(TMP_USERS_FILE)) {
+      const raw = fs.readFileSync(TMP_USERS_FILE, "utf-8");
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        globalUserStore.__gigins_users = parsed;
+        return parsed;
+      }
+    }
+  } catch (err) {
+    console.warn("[UserStorage] Warning reading from TMP users file:", err);
+  }
+
+  // 3. Try reading from project bundle (data/users.json)
+  try {
+    if (fs.existsSync(CWD_USERS_FILE)) {
+      const raw = fs.readFileSync(CWD_USERS_FILE, "utf-8");
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        globalUserStore.__gigins_users = parsed;
+        return parsed;
+      }
+    }
+  } catch (err) {
+    console.warn("[UserStorage] Warning reading from CWD users file:", err);
+  }
+
+  // 4. Default to official baseline users
+  globalUserStore.__gigins_users = INITIAL_OFFICIAL_USERS;
+
+  // Persist to TMP in background so future reads are fast
+  try {
+    ensureDirSafe(TMP_DATA_DIR);
+    fs.writeFileSync(TMP_USERS_FILE, JSON.stringify(INITIAL_OFFICIAL_USERS, null, 2), "utf-8");
+  } catch {}
+
+  return INITIAL_OFFICIAL_USERS;
 }
 
 export function writeStoredUsers(users: StoredUser[]): void {
-  ensureDataDir();
+  // Always update in-memory cache first
+  globalUserStore.__gigins_users = users;
+
+  // Try writing to writable TMP directory
   try {
-    fs.writeFileSync(USERS_FILE, JSON.stringify(users, null, 2), "utf-8");
+    ensureDirSafe(TMP_DATA_DIR);
+    fs.writeFileSync(TMP_USERS_FILE, JSON.stringify(users, null, 2), "utf-8");
   } catch (err) {
-    console.error("[UserStorage] Failed to write users file:", err);
+    console.warn("[UserStorage] Failed writing to TMP users file:", err);
+  }
+
+  // Try writing to CWD if writable (e.g. local environment)
+  try {
+    ensureDirSafe(CWD_DATA_DIR);
+    fs.writeFileSync(CWD_USERS_FILE, JSON.stringify(users, null, 2), "utf-8");
+  } catch {
+    // EROFS on Vercel is expected; TMP and in-memory cache handle runtime state
   }
 }
 

@@ -1,0 +1,313 @@
+[
+  {
+    "id": "act-1794823451608-332",
+    "userId": "usr-owner-gigin",
+    "userName": "Gigin",
+    "userRole": "OWNER",
+    "businessName": "Apotik Tamansari",
+    "businessSlug": "apotik-tamansari",
+    "module": "USER",
+    "action": "LOGIN",
+    "entityId": "usr-owner-gigin",
+    "entityName": "Gigin",
+    "description": "Pengguna Gigin (OWNER) berhasil login ke sistem.",
+    "time": "Hari ini, 17.04 WIB",
+    "timestamp": "2026-11-16T10:04:11.608Z",
+    "ipAddress": "192.168.1.55",
+    "oldData": null,
+    "newData": null
+  },
+  {
+    "id": "act-1794823450764-98",
+    "userId": "usr-kasir-apotik",
+    "userName": "Siti Rahma, A.Md.Farm",
+    "userRole": "KASIR",
+    "businessName": "Apotik Tamansari",
+    "businessSlug": "apotik-tamansari",
+    "module": "USER",
+    "action": "LOGIN",
+    "entityId": "usr-kasir-apotik",
+    "entityName": "Siti Rahma, A.Md.Farm",
+    "description": "Pengguna Siti Rahma, A.Md.Farm (KASIR) berhasil login ke sistem.",
+    "time": "Hari ini, 17.04 WIB",
+    "timestamp": "2026-11-16T10:04:10.764Z",
+    "ipAddress": "192.168.1.55",
+    "oldData": null,
+    "newData": null
+  },
+  {
+    "id": "act-1794823449790-607",
+    "userId": "usr-admin-legacy",
+    "userName": "Gigin (Superadmin)",
+    "userRole": "OWNER",
+    "businessName": "Apotik Tamansari",
+    "businessSlug": "apotik-tamansari",
+    "module": "USER",
+    "action": "LOGIN",
+    "entityId": "usr-admin-legacy",
+    "entityName": "Gigin (Superadmin)",
+    "description": "Pengguna Gigin (Superadmin) (OWNER) berhasil login ke sistem.",
+    "time": "Hari ini, 17.04 WIB",
+    "timestamp": "2026-11-16T10:04:09.790Z",
+    "ipAddress": "192.168.1.55",
+    "oldData": null,
+    "newData": null
+  },
+  {
+    "id": "act-1794823448804-855",
+    "userId": "usr-owner-gigin",
+    "userName": "Gigin",
+    "userRole": "OWNER",
+    "businessName": "Apotik Tamansari",
+    "businessSlug": "apotik-tamansari",
+    "module": "USER",
+    "action": "LOGIN",
+    "entityId": "usr-owner-gigin",
+    "entityName": "Gigin",
+    "description": "Pengguna Gigin (OWNER) berhasil login ke sistem.",
+    "time": "Hari ini, 17.04 WIB",
+    "timestamp": "2026-11-16T10:04:08.804Z",
+    "ipAddress": "192.168.1.55",
+    "oldData": null,
+    "newData": null
+  },
+  {
+    "id": "act-1794818558021-352",
+    "userId": "usr-kasir-apotik",
+    "userName": "Siti Rahma, A.Md.Farm",
+    "userRole": "KASIR",
+    "businessName": "Apotik Tamansari",
+    "businessSlug": "apotik-tamansari",
+    "module": "USER",
+    "action": "LOGIN",
+    "entityId": "usr-kasir-apotik",
+    "entityName": "Siti Rahma, A.Md.Farm",
+    "description": "Pengguna Siti Rahma, A.Md.Farm (KASIR) berhasil login ke sistem.",
+    "time": "Hari ini, 15.42 WIB",
+    "timestamp": "2026-11-16T08:42:38.021Z",
+    "ipAddress": "192.168.1.55",
+    "oldData": null,
+    "newData": null
+  },
+  {
+    "id": "act-1794818497540-167",
+    "userId": "usr-owner-gigin",
+    "userName": "Gigin",
+    "userRole": "OWNER",
+    "businessName": "Apotik Tamansari",
+    "businessSlug": "apotik-tamansari",
+    "module": "USER",
+    "action": "LOGIN",
+    "entityId": "usr-owner-gigin",
+    "entityName": "Gigin",
+    "description": "Pengguna Gigin (OWNER) berhasil login ke sistem.",
+    "time": "Hari ini, 15.41 WIB",
+    "timestamp": "2026-11-16T08:41:37.539Z",
+    "ipAddress": "192.168.1.88",
+    "oldData": null,
+    "newData": null
+  },
+  {
+    "id": "act-seed-01",
+    "userName": "Siti Rahma, A.Md.Farm",
+    "userRole": "KASIR",
+    "businessName": "Apotik Tamansari",
+    "businessSlug": "apotik-tamansari",
+    "module": "POS",
+    "action": "CREATE",
+    "entityId": "SL-TS-894102",
+    "entityName": "Struk #SL-TS-894102",
+    "description": "Transaksi Kasir Penjualan Umum Tunai berhasil diselesaikan",
+    "time": "Hari ini, 07:42 WIB",
+    "timestamp": "2026-11-16T05:40:56.511Z",
+    "ipAddress": "192.168.1.15",
+    "oldData": null,
+    "newData": {
+      "saleNumber": "SL-TS-894102",
+      "totalAmount": 145000,
+      "paymentMethod": "CASH",
+      "cashGiven": 150000,
+      "change": 5000,
+      "items": [
+        {
+          "name": "Amoxicillin 500mg",
+          "qty": 10,
+          "unit": "Kapsul",
+          "subtotal": 25000
+        },
+        {
+          "name": "Paracetamol Sirup 120mg",
+          "qty": 2,
+          "unit": "Botol",
+          "subtotal": 40000
+        },
+        {
+          "name": "Betadine Antiseptik 60ml",
+          "qty": 1,
+          "unit": "Botol",
+          "subtotal": 80000
+        }
+      ],
+      "journalGenerated": "JV-SL-894102"
+    }
+  },
+  {
+    "id": "act-seed-02",
+    "userName": "Gigin",
+    "userRole": "OWNER",
+    "businessName": "Apotik Tamansari",
+    "businessSlug": "apotik-tamansari",
+    "module": "PRODUCT",
+    "action": "UPDATE",
+    "entityId": "PRD-MED-0012",
+    "entityName": "Paracetamol 500mg Tablet",
+    "description": "Harga jual eceran dinaikkan sesuai penyesuaian HPP dari PBF Kimia Farma",
+    "time": "Hari ini, 05:50 WIB",
+    "timestamp": "2026-11-16T03:40:56.511Z",
+    "ipAddress": "192.168.1.1",
+    "oldData": {
+      "productId": "PRD-MED-0012",
+      "name": "Paracetamol 500mg Tablet",
+      "buyPriceHpp": 800,
+      "sellPrice": 1200,
+      "marginPercent": 50,
+      "lastUpdatedBy": "apt. Nurul Aulia"
+    },
+    "newData": {
+      "productId": "PRD-MED-0012",
+      "name": "Paracetamol 500mg Tablet",
+      "buyPriceHpp": 950,
+      "sellPrice": 1500,
+      "marginPercent": 57.8,
+      "lastUpdatedBy": "Gigin (Owner)"
+    }
+  },
+  {
+    "id": "act-seed-03",
+    "userName": "Budi Santoso",
+    "userRole": "MANAGER",
+    "businessName": "Toko Mainan Pasar Lelea",
+    "businessSlug": "toko-mainan-pasar-lelea",
+    "module": "PURCHASE",
+    "action": "CREATE",
+    "entityId": "PO-LELEA-2026-088",
+    "entityName": "Faktur Masuk Supplier #INV-TOYS-7721",
+    "description": "Penerimaan faktur masuk distributor Mobil Remote Control & Diecast",
+    "time": "Kemarin, 16:30 WIB",
+    "timestamp": "2026-11-15T09:40:56.511Z",
+    "ipAddress": "192.168.2.8",
+    "oldData": null,
+    "newData": {
+      "supplier": "CV Mainan Jaya Sentosa (Jakarta)",
+      "invoiceNumber": "INV-TOYS-7721",
+      "poNumber": "PO-LELEA-2026-088",
+      "totalInvoice": 4850000,
+      "paymentTerms": "TEMPO_30_HARI",
+      "dueDate": "2026-12-14",
+      "itemsReceived": [
+        {
+          "name": "Mobil RC Rock Crawler 4WD",
+          "qty": 12,
+          "buyPrice": 175000
+        },
+        {
+          "name": "Hotwheels Basic Box 72pcs",
+          "qty": 2,
+          "buyPrice": 1375000
+        }
+      ]
+    }
+  },
+  {
+    "id": "act-seed-04",
+    "userName": "Siti Rahma, A.Md.Farm",
+    "userRole": "KASIR",
+    "businessName": "Apotik Tamansari",
+    "businessSlug": "apotik-tamansari",
+    "module": "POS",
+    "action": "VOID",
+    "entityId": "SL-TS-893991",
+    "entityName": "Struk #SL-TS-893991",
+    "description": "Void / Pembatalan transaksi kasir karena pelanggan salah bawa resep",
+    "time": "Kemarin, 14:15 WIB",
+    "timestamp": "2026-11-15T07:40:56.511Z",
+    "ipAddress": "192.168.1.15",
+    "oldData": {
+      "saleNumber": "SL-TS-893991",
+      "status": "COMPLETED",
+      "totalAmount": 230000,
+      "paymentMethod": "QRIS",
+      "customer": "Bp. Hendra Kurniawan",
+      "voidReason": null,
+      "voidApprovedBy": null
+    },
+    "newData": {
+      "saleNumber": "SL-TS-893991",
+      "status": "VOID",
+      "totalAmount": 0,
+      "paymentMethod": "REFUNDED_QRIS",
+      "customer": "Bp. Hendra Kurniawan",
+      "voidReason": "Salah bawa resep obat keras, diganti nomor resep baru",
+      "voidApprovedBy": "apt. Nurul Aulia (Manager)"
+    }
+  },
+  {
+    "id": "act-seed-05",
+    "userName": "apt. Nurul Aulia, S.Farm",
+    "userRole": "MANAGER",
+    "businessName": "Apotik Tamansari",
+    "businessSlug": "apotik-tamansari",
+    "module": "STOCK",
+    "action": "APPROVE",
+    "entityId": "OPN-2026-11-14",
+    "entityName": "Stok Opname Rak Kapsul & Sirup",
+    "description": "Approval penyesuaian selisih stok fisik bulanan apotek",
+    "time": "Kemarin, 11:00 WIB",
+    "timestamp": "2026-11-15T04:40:56.511Z",
+    "ipAddress": "192.168.1.10",
+    "oldData": {
+      "opnameId": "OPN-2026-11-14",
+      "status": "DRAFT_PENDING_APPROVAL",
+      "systemRecordedTotalUnits": 1420,
+      "physicalCountedTotalUnits": 1418,
+      "discrepancyUnits": -2,
+      "financialImpact": -15000
+    },
+    "newData": {
+      "opnameId": "OPN-2026-11-14",
+      "status": "APPROVED_ADJUSTED",
+      "approvedBy": "apt. Nurul Aulia, S.Farm",
+      "journalAdjustment": "JV-OPN-20261114-01",
+      "notes": "Selisih 2 botol rusak pecah saat display, dialokasikan ke Beban Kerusakan Obat"
+    }
+  },
+  {
+    "id": "act-seed-06",
+    "userName": "Gigin",
+    "userRole": "OWNER",
+    "businessName": "Gigin's Business Centre",
+    "businessSlug": "all",
+    "module": "USER",
+    "action": "UPDATE",
+    "entityId": "usr-04",
+    "entityName": "Ahmad Fauzi (Kasir)",
+    "description": "Status akun diubah menjadi Nonaktif (akses diblokir)",
+    "time": "2 hari lalu",
+    "timestamp": "2026-11-14T08:40:56.511Z",
+    "ipAddress": "192.168.1.1",
+    "oldData": {
+      "userId": "usr-04",
+      "name": "Ahmad Fauzi",
+      "isActive": true,
+      "role": "KASIR",
+      "assignedTo": "Toko Mainan Pasar Lelea"
+    },
+    "newData": {
+      "userId": "usr-04",
+      "name": "Ahmad Fauzi",
+      "isActive": false,
+      "blockedReason": "Pegawai mutasi tugas sementara",
+      "updatedBy": "Gigin (Owner)"
+    }
+  }
+]

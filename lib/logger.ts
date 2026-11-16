@@ -66,9 +66,15 @@ export interface LogLoginParams {
 
 let lastDbCheckTime = 0;
 let isDbReachable = true;
-const DB_CHECK_INTERVAL_MS = 60 * 1000; // Check DB at most once a minute if offline
+const DB_CHECK_INTERVAL_MS = 30 * 1000; // Check DB at most once per 30s if offline
 
 export async function checkDatabaseAvailable(): Promise<boolean> {
+  // If no DATABASE_URL or POSTGRES_URL configured or points to localhost in production, fast return false
+  const dbUrl = process.env.DATABASE_URL || process.env.POSTGRES_PRISMA_URL || process.env.POSTGRES_URL;
+  if (!dbUrl || (process.env.VERCEL && dbUrl.includes("localhost"))) {
+    return false;
+  }
+
   const now = Date.now();
   if (!isDbReachable && now - lastDbCheckTime < DB_CHECK_INTERVAL_MS) {
     return false;
@@ -77,7 +83,7 @@ export async function checkDatabaseAvailable(): Promise<boolean> {
   try {
     const pingPromise = prisma.$queryRaw`SELECT 1`;
     const timeoutPromise = new Promise((_, reject) =>
-      setTimeout(() => reject(new Error("DB ping timeout")), 400)
+      setTimeout(() => reject(new Error("DB ping timeout")), 2500)
     );
     await Promise.race([pingPromise, timeoutPromise]);
     isDbReachable = true;

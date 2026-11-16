@@ -1,5 +1,6 @@
 import fs from "fs";
 import path from "path";
+import os from "os";
 
 // ─── Interfaces ─────────────────────────────────────────────────────────────
 
@@ -39,15 +40,29 @@ export interface ActivityLogItem {
   newData: Record<string, any> | null;
 }
 
-// ─── Storage Directory Setup ────────────────────────────────────────────────
+// ─── Storage Directory Setup (Vercel Serverless & Local Dual-Path) ─────────
 
-const LOGS_DIR = path.join(process.cwd(), "data", "logs");
-const LOGIN_FILE = path.join(LOGS_DIR, "login_history.json");
-const ACTIVITY_FILE = path.join(LOGS_DIR, "activity_logs.json");
+const CWD_LOGS_DIR = path.join(process.cwd(), "data", "logs");
+const CWD_LOGIN_FILE = path.join(CWD_LOGS_DIR, "login_history.json");
+const CWD_ACTIVITY_FILE = path.join(CWD_LOGS_DIR, "activity_logs.json");
 
-function ensureLogsDir() {
-  if (!fs.existsSync(LOGS_DIR)) {
-    fs.mkdirSync(LOGS_DIR, { recursive: true });
+const TMP_LOGS_DIR = path.join(os.tmpdir(), "gigins_data", "logs");
+const TMP_LOGIN_FILE = path.join(TMP_LOGS_DIR, "login_history.json");
+const TMP_ACTIVITY_FILE = path.join(TMP_LOGS_DIR, "activity_logs.json");
+
+// In-Memory Global Store to preserve logs across serverless function invocations
+const globalAuditStore = globalThis as unknown as {
+  __gigins_login_logs?: LoginLogItem[];
+  __gigins_activity_logs?: ActivityLogItem[];
+};
+
+function ensureDirSafe(dirPath: string) {
+  try {
+    if (!fs.existsSync(dirPath)) {
+      fs.mkdirSync(dirPath, { recursive: true });
+    }
+  } catch {
+    // Ignore read-only filesystem errors silently
   }
 }
 
@@ -399,22 +414,52 @@ export function formatLogTime(date: Date = new Date()): string {
   }
 }
 
-// ─── File Storage Operations ────────────────────────────────────────────────
+// ─── File Storage Operations (Dual-Path Serverless & Persistent Store) ──────
 
 export async function readLoginLogs(): Promise<LoginLogItem[]> {
-  ensureLogsDir();
-  try {
-    if (!fs.existsSync(LOGIN_FILE)) {
-      fs.writeFileSync(LOGIN_FILE, JSON.stringify(INITIAL_LOGIN_LOGS, null, 2), "utf-8");
-      return INITIAL_LOGIN_LOGS;
-    }
-    const raw = fs.readFileSync(LOGIN_FILE, "utf-8");
-    const data = JSON.parse(raw);
-    return Array.isArray(data) ? data : INITIAL_LOGIN_LOGS;
-  } catch (err) {
-    console.error("[AuditStorage] Failed to read login logs:", err);
-    return INITIAL_LOGIN_LOGS;
+  // 1. If in-memory cache is populated, return immediately
+  if (globalAuditStore.__gigins_login_logs && globalAuditStore.__gigins_login_logs.length > 0) {
+    return globalAuditStore.__gigins_login_logs;
   }
+
+  // 2. Try reading from writable TMP directory first (has latest runtime logs)
+  try {
+    if (fs.existsSync(TMP_LOGIN_FILE)) {
+      const raw = fs.readFileSync(TMP_LOGIN_FILE, "utf-8");
+      const data = JSON.parse(raw);
+      if (Array.isArray(data) && data.length > 0) {
+        globalAuditStore.__gigins_login_logs = data;
+        return data;
+      }
+    }
+  } catch (err) {
+    console.warn("[AuditStorage] Warning reading TMP login logs:", err);
+  }
+
+  // 3. Try reading from project bundle (data/logs/login_history.json)
+  try {
+    if (fs.existsSync(CWD_LOGIN_FILE)) {
+      const raw = fs.readFileSync(CWD_LOGIN_FILE, "utf-8");
+      const data = JSON.parse(raw);
+      if (Array.isArray(data) && data.length > 0) {
+        globalAuditStore.__gigins_login_logs = data;
+        return data;
+      }
+    }
+  } catch (err) {
+    console.warn("[AuditStorage] Warning reading CWD login logs:", err);
+  }
+
+  // 4. Default to baseline logs
+  globalAuditStore.__gigins_login_logs = INITIAL_LOGIN_LOGS;
+
+  // Persist to TMP in background so future reads are fast
+  try {
+    ensureDirSafe(TMP_LOGS_DIR);
+    fs.writeFileSync(TMP_LOGIN_FILE, JSON.stringify(INITIAL_LOGIN_LOGS, null, 2), "utf-8");
+  } catch {}
+
+  return INITIAL_LOGIN_LOGS;
 }
 
 export async function appendLoginLog(entry: {
@@ -430,7 +475,6 @@ export async function appendLoginLog(entry: {
   status: "SUCCESS" | "FAILED";
   failReason?: string;
 }): Promise<LoginLogItem> {
-  ensureLogsDir();
   const currentLogs = await readLoginLogs();
 
   const now = new Date();
@@ -455,30 +499,71 @@ export async function appendLoginLog(entry: {
 
   // Prepend to top of logs array (most recent first), limit to 1000
   const updatedLogs = [newLog, ...currentLogs].slice(0, 1000);
+  globalAuditStore.__gigins_login_logs = updatedLogs;
 
+  // Try writing to writable TMP directory
   try {
-    fs.writeFileSync(LOGIN_FILE, JSON.stringify(updatedLogs, null, 2), "utf-8");
+    ensureDirSafe(TMP_LOGS_DIR);
+    fs.writeFileSync(TMP_LOGIN_FILE, JSON.stringify(updatedLogs, null, 2), "utf-8");
   } catch (err) {
-    console.error("[AuditStorage] Failed to write login log file:", err);
+    console.warn("[AuditStorage] Failed to write TMP login log file:", err);
+  }
+
+  // Try writing to CWD if writable (local dev)
+  try {
+    ensureDirSafe(CWD_LOGS_DIR);
+    fs.writeFileSync(CWD_LOGIN_FILE, JSON.stringify(updatedLogs, null, 2), "utf-8");
+  } catch {
+    // EROFS on Vercel is expected; TMP and in-memory cache handle runtime state
   }
 
   return newLog;
 }
 
 export async function readActivityLogs(): Promise<ActivityLogItem[]> {
-  ensureLogsDir();
-  try {
-    if (!fs.existsSync(ACTIVITY_FILE)) {
-      fs.writeFileSync(ACTIVITY_FILE, JSON.stringify(INITIAL_ACTIVITY_LOGS, null, 2), "utf-8");
-      return INITIAL_ACTIVITY_LOGS;
-    }
-    const raw = fs.readFileSync(ACTIVITY_FILE, "utf-8");
-    const data = JSON.parse(raw);
-    return Array.isArray(data) ? data : INITIAL_ACTIVITY_LOGS;
-  } catch (err) {
-    console.error("[AuditStorage] Failed to read activity logs:", err);
-    return INITIAL_ACTIVITY_LOGS;
+  // 1. If in-memory cache is populated, return immediately
+  if (globalAuditStore.__gigins_activity_logs && globalAuditStore.__gigins_activity_logs.length > 0) {
+    return globalAuditStore.__gigins_activity_logs;
   }
+
+  // 2. Try reading from writable TMP directory first (has latest runtime logs)
+  try {
+    if (fs.existsSync(TMP_ACTIVITY_FILE)) {
+      const raw = fs.readFileSync(TMP_ACTIVITY_FILE, "utf-8");
+      const data = JSON.parse(raw);
+      if (Array.isArray(data) && data.length > 0) {
+        globalAuditStore.__gigins_activity_logs = data;
+        return data;
+      }
+    }
+  } catch (err) {
+    console.warn("[AuditStorage] Warning reading TMP activity logs:", err);
+  }
+
+  // 3. Try reading from project bundle (data/logs/activity_logs.json)
+  try {
+    if (fs.existsSync(CWD_ACTIVITY_FILE)) {
+      const raw = fs.readFileSync(CWD_ACTIVITY_FILE, "utf-8");
+      const data = JSON.parse(raw);
+      if (Array.isArray(data) && data.length > 0) {
+        globalAuditStore.__gigins_activity_logs = data;
+        return data;
+      }
+    }
+  } catch (err) {
+    console.warn("[AuditStorage] Warning reading CWD activity logs:", err);
+  }
+
+  // 4. Default to baseline logs
+  globalAuditStore.__gigins_activity_logs = INITIAL_ACTIVITY_LOGS;
+
+  // Persist to TMP in background so future reads are fast
+  try {
+    ensureDirSafe(TMP_LOGS_DIR);
+    fs.writeFileSync(TMP_ACTIVITY_FILE, JSON.stringify(INITIAL_ACTIVITY_LOGS, null, 2), "utf-8");
+  } catch {}
+
+  return INITIAL_ACTIVITY_LOGS;
 }
 
 export async function appendActivityLog(entry: {
@@ -496,7 +581,6 @@ export async function appendActivityLog(entry: {
   oldData?: Record<string, any> | null;
   newData?: Record<string, any> | null;
 }): Promise<ActivityLogItem> {
-  ensureLogsDir();
   const currentLogs = await readActivityLogs();
 
   const now = new Date();
@@ -520,11 +604,22 @@ export async function appendActivityLog(entry: {
   };
 
   const updatedLogs = [newLog, ...currentLogs].slice(0, 1000);
+  globalAuditStore.__gigins_activity_logs = updatedLogs;
 
+  // Try writing to writable TMP directory
   try {
-    fs.writeFileSync(ACTIVITY_FILE, JSON.stringify(updatedLogs, null, 2), "utf-8");
+    ensureDirSafe(TMP_LOGS_DIR);
+    fs.writeFileSync(TMP_ACTIVITY_FILE, JSON.stringify(updatedLogs, null, 2), "utf-8");
   } catch (err) {
-    console.error("[AuditStorage] Failed to write activity log file:", err);
+    console.warn("[AuditStorage] Failed to write TMP activity log file:", err);
+  }
+
+  // Try writing to CWD if writable (local dev)
+  try {
+    ensureDirSafe(CWD_LOGS_DIR);
+    fs.writeFileSync(CWD_ACTIVITY_FILE, JSON.stringify(updatedLogs, null, 2), "utf-8");
+  } catch {
+    // EROFS on Vercel is expected; TMP and in-memory cache handle runtime state
   }
 
   return newLog;
