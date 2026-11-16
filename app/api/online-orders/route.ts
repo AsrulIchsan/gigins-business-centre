@@ -69,6 +69,9 @@ const FALLBACK_ORDERS = [
   },
 ];
 
+// Global in-memory list for live updates between customer webstore & cashier
+const liveOrders: any[] = [...FALLBACK_ORDERS];
+
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
@@ -134,8 +137,8 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ success: true, source: "database", orders: mapped });
     }
 
-    // Filter fallback orders
-    let result = [...FALLBACK_ORDERS];
+    // Filter fallback/live orders
+    let result = [...liveOrders];
     if (channel && channel !== "ALL") {
       result = result.filter((o) => o.channel === channel);
     }
@@ -174,6 +177,12 @@ export async function PATCH(request: NextRequest) {
       // Ignore if mock ID
     }
 
+    // Update in liveOrders
+    const target = liveOrders.find((o) => o.id === orderId);
+    if (target) {
+      target.status = status;
+    }
+
     return NextResponse.json({
       success: true,
       message: `Status pesanan ${orderId} berhasil diubah menjadi ${status}`,
@@ -203,10 +212,53 @@ export async function POST(request: NextRequest) {
         // Mock fallback
       }
 
+      const target = liveOrders.find((o) => o.id === orderId);
+      if (target) {
+        target.status = "PROCESSING";
+      }
+
       return NextResponse.json({
         success: true,
         message: `Pesanan ${orderId} telah diarahkan ke Kasir POS Apotik Tamansari.`,
         posUrl: `/b/${businessSlug}/pos?onlineOrderId=${orderId}`,
+      });
+    }
+
+    // CREATE NEW ONLINE ORDER FROM WEBSTORE
+    if (action === "CREATE_ORDER" || body.items) {
+      const now = new Date();
+      const dateStr = now.toISOString().slice(0, 10).replace(/-/g, "");
+      const randomSuffix = Math.floor(100 + Math.random() * 900);
+      const newOrderNumber = `ORD-WEB-${dateStr}-${randomSuffix}`;
+      const newOrderId = `ord-web-${Date.now()}`;
+
+      const newOrder = {
+        id: newOrderId,
+        orderNumber: newOrderNumber,
+        channel: "WEBSTORE_INTERNAL",
+        channelLabel: "Webstore Apotik Tamansari",
+        customerName: body.customerName || "Pelanggan Online",
+        phone: body.phone || "-",
+        items: (body.items || []).map((it: any, idx: number) => ({
+          id: `item-${Date.now()}-${idx}`,
+          productName: it.productName || it.name,
+          qty: Number(it.qty || it.quantity || 1),
+          unitName: it.unitName || it.unit || "Pcs",
+          price: Number(it.price || 0),
+          subtotal: Number(it.subtotal || (it.price * (it.qty || 1))),
+        })),
+        totalAmount: Number(body.totalAmount || 0),
+        status: "PENDING",
+        notes: body.notes || `Kirim ke: ${body.address || "-"}. Opsi: ${body.shippingMethod || "Kurir Apotek"} (${body.paymentMethod || "QRIS"})`,
+        createdAt: now.toISOString(),
+      };
+
+      liveOrders.unshift(newOrder);
+
+      return NextResponse.json({
+        success: true,
+        message: "Pesanan webstore berhasil dibuat dan dikirim ke sistem kasir Apotik Tamansari!",
+        order: newOrder,
       });
     }
 

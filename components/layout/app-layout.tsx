@@ -13,8 +13,13 @@ interface AppLayoutProps {
 export function AppLayout({ children }: AppLayoutProps) {
   const pathname = usePathname();
 
-  // Pada halaman login atau portal hub, tampilkan tanpa Sidebar dan Header bawaan
-  if (pathname.startsWith("/login") || pathname.startsWith("/hub")) {
+  // Pada halaman login, portal hub, atau webstore publik, tampilkan tanpa Sidebar dan Header bawaan ERP staf
+  if (
+    pathname.startsWith("/login") ||
+    pathname.startsWith("/hub") ||
+    pathname.startsWith("/store") ||
+    pathname.startsWith("/webstore")
+  ) {
     return <>{children}</>;
   }
 

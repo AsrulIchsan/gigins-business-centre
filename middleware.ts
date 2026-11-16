@@ -36,7 +36,13 @@ async function verifyToken(token: string): Promise<TokenPayload | null> {
 }
 
 // Public endpoints and static assets
-const PUBLIC_PATHS = ["/login", "/api/auth"];
+const PUBLIC_PATHS = [
+  "/login",
+  "/api/auth",
+  "/store",
+  "/webstore",
+  "/api/store",
+];
 
 function isPublicAsset(pathname: string): boolean {
   return (
@@ -53,6 +59,28 @@ export async function middleware(request: NextRequest) {
   // Lewati file statis
   if (isPublicAsset(pathname)) {
     return NextResponse.next();
+  }
+
+  // Subdomain Webstore Handling (e.g. store.apotiktamansari.com, webstore.apotiktamansari.com, store.localhost:3000)
+  const host = request.headers.get("host") || "";
+  const isStoreSubdomain =
+    host.startsWith("store.") ||
+    host.startsWith("webstore.") ||
+    host.startsWith("shop.");
+
+  if (isStoreSubdomain) {
+    if (pathname === "/") {
+      return NextResponse.rewrite(new URL("/store", request.url));
+    }
+    if (!pathname.startsWith("/store") && !pathname.startsWith("/api") && !pathname.startsWith("/_next")) {
+      return NextResponse.rewrite(new URL(`/store${pathname}`, request.url));
+    }
+  }
+
+  // Alias /webstore -> rewrite ke /store
+  if (pathname === "/webstore" || pathname.startsWith("/webstore/")) {
+    const target = pathname.replace(/^\/webstore/, "/store");
+    return NextResponse.rewrite(new URL(target, request.url));
   }
 
   const sessionToken = request.cookies.get("session_token")?.value;

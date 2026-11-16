@@ -175,6 +175,13 @@ export default function BusinessOnlineOrdersPage() {
         </div>
 
         <div className="flex items-center gap-2">
+          <Link href="/store" target="_blank" rel="noopener noreferrer">
+            <Button size="sm" variant="outline" className="text-xs bg-emerald-50 text-emerald-800 border-emerald-200 hover:bg-emerald-100">
+              <Store className="mr-1.5 h-3.5 w-3.5 text-emerald-600" />
+              Buka Webstore (store.)
+            </Button>
+          </Link>
+
           <Button
             variant="outline"
             size="sm"
