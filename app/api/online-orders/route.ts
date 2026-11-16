@@ -2,6 +2,14 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
+export const fetchCache = "force-no-store";
+export const revalidate = 0;
+
+const NO_CACHE_HEADERS = {
+  "Cache-Control": "no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0",
+  "Pragma": "no-cache",
+  "Expires": "0",
+};
 
 const FALLBACK_ORDERS = [
   {
@@ -85,7 +93,7 @@ export async function GET(request: NextRequest) {
     if (orderNumber) {
       const single = liveOrders.find((o) => o.orderNumber.toLowerCase() === orderNumber.toLowerCase());
       if (single) {
-        return NextResponse.json({ success: true, order: single });
+        return NextResponse.json({ success: true, order: single }, { headers: NO_CACHE_HEADERS });
       }
     }
 
@@ -144,7 +152,10 @@ export async function GET(request: NextRequest) {
         createdAt: ord.createdAt.toISOString(),
       }));
 
-      return NextResponse.json({ success: true, source: "database", orders: mapped });
+      return NextResponse.json(
+        { success: true, source: "database", orders: mapped },
+        { headers: NO_CACHE_HEADERS }
+      );
     }
 
     // Filter fallback/live orders
@@ -160,11 +171,14 @@ export async function GET(request: NextRequest) {
       result = result.filter((o) => o.phone.replace(/[^0-9]/g, "").includes(cleanPhone));
     }
 
-    return NextResponse.json({
-      success: true,
-      source: "fallback_seed",
-      orders: result,
-    });
+    return NextResponse.json(
+      {
+        success: true,
+        source: "fallback_seed",
+        orders: result,
+      },
+      { headers: NO_CACHE_HEADERS }
+    );
   } catch (error: any) {
     return NextResponse.json(
       { success: false, message: error.message || "Failed to load orders" },
@@ -221,11 +235,14 @@ export async function PATCH(request: NextRequest) {
       // Ignore if mock ID
     }
 
-    return NextResponse.json({
-      success: true,
-      message: `Pesanan ${target.orderNumber} berhasil diperbarui. Status: ${target.status}`,
-      order: target,
-    });
+    return NextResponse.json(
+      {
+        success: true,
+        message: `Pesanan ${target.orderNumber} berhasil diperbarui. Status: ${target.status}`,
+        order: target,
+      },
+      { headers: NO_CACHE_HEADERS }
+    );
   } catch (error: any) {
     return NextResponse.json(
       { success: false, message: error.message || "Failed to update order" },
@@ -299,11 +316,14 @@ export async function POST(request: NextRequest) {
 
       liveOrders.unshift(newOrder);
 
-      return NextResponse.json({
-        success: true,
-        message: "Pesanan webstore berhasil dibuat dan dikirim ke sistem kasir Apotik Tamansari!",
-        order: newOrder,
-      });
+      return NextResponse.json(
+        {
+          success: true,
+          message: "Pesanan webstore berhasil dibuat dan dikirim ke sistem kasir Apotik Tamansari!",
+          order: newOrder,
+        },
+        { headers: NO_CACHE_HEADERS }
+      );
     }
 
     return NextResponse.json({ success: false, message: "Aksi tidak dikenali" }, { status: 400 });

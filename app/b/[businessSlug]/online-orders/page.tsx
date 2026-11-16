@@ -107,14 +107,44 @@ export default function BusinessOnlineOrdersPage() {
 
   // Update status handler
   const handleUpdateStatus = async (orderId: string, newStatus: string) => {
+    const targetOrder = orders.find((o) => o.id === orderId);
+    const orderNumber = targetOrder?.orderNumber;
+
     setOrders((prev) =>
       prev.map((o) => (o.id === orderId ? { ...o, status: newStatus } : o))
     );
+
+    // 1. Instant cross-tab broadcast (0ms delay for open customer tabs)
+    if (typeof window !== "undefined") {
+      try {
+        const channel = new BroadcastChannel("order_status_sync");
+        channel.postMessage({
+          orderId,
+          orderNumber,
+          status: newStatus,
+          timestamp: Date.now(),
+        });
+        channel.close();
+      } catch {}
+      try {
+        localStorage.setItem(
+          "last_order_status_sync",
+          JSON.stringify({
+            orderId,
+            orderNumber,
+            status: newStatus,
+            timestamp: Date.now(),
+          })
+        );
+      } catch {}
+    }
+
+    // 2. Persist to API
     try {
-      await fetch("/api/online-orders", {
+      await fetch(`/api/online-orders?_t=${Date.now()}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ orderId, status: newStatus }),
+        body: JSON.stringify({ orderId, orderNumber, status: newStatus }),
       });
     } catch (err) {
       console.error("Error updating status:", err);

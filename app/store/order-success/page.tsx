@@ -49,7 +49,16 @@ function OrderSuccessContent() {
   const fetchOrderStatus = async () => {
     try {
       setIsSyncing(true);
-      const res = await fetch(`/api/online-orders?orderNumber=${encodeURIComponent(orderNumber)}`);
+      const res = await fetch(
+        `/api/online-orders?orderNumber=${encodeURIComponent(orderNumber)}&_t=${Date.now()}`,
+        {
+          cache: "no-store",
+          headers: {
+            "Cache-Control": "no-cache, no-store, must-revalidate",
+            Pragma: "no-cache",
+          },
+        }
+      );
       const data = await res.json();
       if (data.success && data.order) {
         setOrder(data.order);
@@ -66,15 +75,58 @@ function OrderSuccessContent() {
     }
   };
 
-  // Poll every 3.5 seconds so customer sees live status change as cashier clicks
+  // Poll every 2.5 seconds and listen to BroadcastChannel + Storage for 0ms instant sync
   useEffect(() => {
     fetchOrderStatus();
     const interval = setInterval(() => {
       fetchOrderStatus();
-    }, 3500);
+    }, 2500);
 
-    return () => clearInterval(interval);
-  }, [orderNumber]);
+    let channel: BroadcastChannel | null = null;
+    try {
+      channel = new BroadcastChannel("order_status_sync");
+      channel.onmessage = (event) => {
+        const { orderId, orderNumber: bOrderNumber, status } = event.data || {};
+        if (
+          (bOrderNumber && bOrderNumber.toLowerCase() === orderNumber.toLowerCase()) ||
+          (order?.id && orderId === order.id)
+        ) {
+          if (status) setCurrentStatus(status);
+          fetchOrderStatus();
+        }
+      };
+    } catch {}
+
+    const handleStorage = (e: StorageEvent) => {
+      if (e.key === "last_order_status_sync" && e.newValue) {
+        try {
+          const { orderId, orderNumber: bOrderNumber, status } = JSON.parse(e.newValue);
+          if (
+            (bOrderNumber && bOrderNumber.toLowerCase() === orderNumber.toLowerCase()) ||
+            (order?.id && orderId === order.id)
+          ) {
+            if (status) setCurrentStatus(status);
+            fetchOrderStatus();
+          }
+        } catch {}
+      }
+    };
+    window.addEventListener("storage", handleStorage);
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible") {
+        fetchOrderStatus();
+      }
+    };
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+
+    return () => {
+      clearInterval(interval);
+      if (channel) channel.close();
+      window.removeEventListener("storage", handleStorage);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    };
+  }, [orderNumber, order?.id]);
 
   // Handle proof file selection
   const handleProofFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
