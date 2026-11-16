@@ -214,7 +214,12 @@ export async function getSession(): Promise<AuthSession | null> {
 }
 
 // ─── Fallback Seeded Users (Digunakan saat PostgreSQL offline) ────────────────
-const BCRYPT_PASSWORD123 = "$2b$10$VeZLImRwEnNlITIrc1V/0ue0Wt26g.wrjGU6MY67opzqRA0KgF6zK";
+const BCRYPT_ADMIN123 = bcrypt.hashSync("admin123", 10);
+const BCRYPT_KASIR123 = bcrypt.hashSync("kasir123", 10);
+const BCRYPT_NURUL123 = bcrypt.hashSync("nurul123", 10);
+const BCRYPT_BUDI123 = bcrypt.hashSync("budi123", 10);
+const BCRYPT_AHMAD123 = bcrypt.hashSync("ahmad123", 10);
+const BCRYPT_DEWI123 = bcrypt.hashSync("dewi123", 10);
 
 export interface FallbackUser {
   id: string;
@@ -227,12 +232,38 @@ export interface FallbackUser {
 }
 
 export const FALLBACK_USERS: Record<string, FallbackUser> = {
-  // 1. Owner (Gigin)
+  // 1. Owner (Gigin) - Password: admin123
+  "admin@apotiktamansari.com": {
+    id: "usr-owner-gigin",
+    name: "Gigin",
+    email: "admin@apotiktamansari.com",
+    hashedPassword: BCRYPT_ADMIN123,
+    role: "OWNER",
+    isActive: true,
+    businessAccesses: [
+      {
+        businessId: "biz-apotik-tamansari",
+        businessSlug: "apotik-tamansari",
+        businessName: "Apotik Tamansari",
+        businessType: "PHARMACY",
+        role: "OWNER",
+        permissions: DEFAULT_PERMISSIONS.OWNER,
+      },
+      {
+        businessId: "biz-toko-mainan-lelea",
+        businessSlug: "toko-mainan-pasar-lelea",
+        businessName: "Toko Mainan Pasar Lelea",
+        businessType: "RETAIL_TOYS",
+        role: "OWNER",
+        permissions: DEFAULT_PERMISSIONS.OWNER,
+      },
+    ],
+  },
   "owner@gigin.com": {
     id: "usr-owner-gigin",
     name: "Gigin",
     email: "owner@gigin.com",
-    hashedPassword: BCRYPT_PASSWORD123,
+    hashedPassword: BCRYPT_ADMIN123,
     role: "OWNER",
     isActive: true,
     businessAccesses: [
@@ -254,100 +285,11 @@ export const FALLBACK_USERS: Record<string, FallbackUser> = {
       },
     ],
   },
-
-  // 2. Staff Apotik Tamansari (Kasir)
-  "kasir.apotik@gigin.com": {
-    id: "usr-kasir-apotik",
-    name: "Siti Rahma, A.Md.Farm",
-    email: "kasir.apotik@gigin.com",
-    hashedPassword: BCRYPT_PASSWORD123,
-    role: "KASIR",
-    isActive: true,
-    businessAccesses: [
-      {
-        businessId: "biz-apotik-tamansari",
-        businessSlug: "apotik-tamansari",
-        businessName: "Apotik Tamansari",
-        businessType: "PHARMACY",
-        role: "KASIR",
-        permissions: ["can_stock_opname"],
-      },
-    ],
-  },
-
-  // 3. Staff Toko Mainan Pasar Lelea (Kasir)
-  "kasir.mainan@gigin.com": {
-    id: "usr-kasir-mainan",
-    name: "Budi Santoso",
-    email: "kasir.mainan@gigin.com",
-    hashedPassword: BCRYPT_PASSWORD123,
-    role: "KASIR",
-    isActive: true,
-    businessAccesses: [
-      {
-        businessId: "biz-toko-mainan-lelea",
-        businessSlug: "toko-mainan-pasar-lelea",
-        businessName: "Toko Mainan Pasar Lelea",
-        businessType: "RETAIL_TOYS",
-        role: "KASIR",
-        permissions: ["can_stock_opname"],
-      },
-    ],
-  },
-
-  // Legacy Accounts
-  "admin@apotiktamansari.com": {
-    id: "usr-admin-legacy",
-    name: "Gigin (Superadmin)",
-    email: "admin@apotiktamansari.com",
-    hashedPassword: BCRYPT_PASSWORD123,
-    role: "OWNER",
-    isActive: true,
-    businessAccesses: [
-      {
-        businessId: "biz-apotik-tamansari",
-        businessSlug: "apotik-tamansari",
-        businessName: "Apotik Tamansari",
-        businessType: "PHARMACY",
-        role: "OWNER",
-        permissions: DEFAULT_PERMISSIONS.OWNER,
-      },
-      {
-        businessId: "biz-toko-mainan-lelea",
-        businessSlug: "toko-mainan-pasar-lelea",
-        businessName: "Toko Mainan Pasar Lelea",
-        businessType: "RETAIL_TOYS",
-        role: "OWNER",
-        permissions: DEFAULT_PERMISSIONS.OWNER,
-      },
-    ],
-  },
-
-  "kasir@apotiktamansari.com": {
-    id: "usr-kasir-legacy",
-    name: "Siti Rahma, A.Md.Farm",
-    email: "kasir@apotiktamansari.com",
-    hashedPassword: BCRYPT_PASSWORD123,
-    role: "KASIR",
-    isActive: true,
-    businessAccesses: [
-      {
-        businessId: "biz-apotik-tamansari",
-        businessSlug: "apotik-tamansari",
-        businessName: "Apotik Tamansari",
-        businessType: "PHARMACY",
-        role: "KASIR",
-        permissions: ["can_stock_opname"],
-      },
-    ],
-  },
-
-  // Aliases Resmi untuk Login Cepat
   "owner@apotiktamansari.com": {
     id: "usr-owner-gigin",
     name: "Gigin",
     email: "owner@apotiktamansari.com",
-    hashedPassword: BCRYPT_PASSWORD123,
+    hashedPassword: BCRYPT_ADMIN123,
     role: "OWNER",
     isActive: true,
     businessAccesses: [
@@ -366,6 +308,150 @@ export const FALLBACK_USERS: Record<string, FallbackUser> = {
         businessType: "RETAIL_TOYS",
         role: "OWNER",
         permissions: DEFAULT_PERMISSIONS.OWNER,
+      },
+    ],
+  },
+
+  // 2. Apoteker / Manajer Apotik Tamansari (apt. Nurul Aulia) - Password: nurul123
+  "nurul.aulia@apotiktamansari.com": {
+    id: "usr-01",
+    name: "apt. Nurul Aulia, S.Farm",
+    email: "nurul.aulia@apotiktamansari.com",
+    hashedPassword: BCRYPT_NURUL123,
+    role: "MANAJER",
+    isActive: true,
+    businessAccesses: [
+      {
+        businessId: "biz-apotik-tamansari",
+        businessSlug: "apotik-tamansari",
+        businessName: "Apotik Tamansari",
+        businessType: "PHARMACY",
+        role: "MANAGER",
+        permissions: DEFAULT_PERMISSIONS.MANAGER,
+      },
+    ],
+  },
+
+  // 3. Kasir Apotik Tamansari (Siti Rahma) - Password: kasir123
+  "kasir@apotiktamansari.com": {
+    id: "usr-02",
+    name: "Siti Rahma, A.Md.Farm",
+    email: "kasir@apotiktamansari.com",
+    hashedPassword: BCRYPT_KASIR123,
+    role: "KASIR",
+    isActive: true,
+    businessAccesses: [
+      {
+        businessId: "biz-apotik-tamansari",
+        businessSlug: "apotik-tamansari",
+        businessName: "Apotik Tamansari",
+        businessType: "PHARMACY",
+        role: "KASIR",
+        permissions: ["can_stock_opname"],
+      },
+    ],
+  },
+  "kasir.apotik@gigin.com": {
+    id: "usr-02",
+    name: "Siti Rahma, A.Md.Farm",
+    email: "kasir.apotik@gigin.com",
+    hashedPassword: BCRYPT_KASIR123,
+    role: "KASIR",
+    isActive: true,
+    businessAccesses: [
+      {
+        businessId: "biz-apotik-tamansari",
+        businessSlug: "apotik-tamansari",
+        businessName: "Apotik Tamansari",
+        businessType: "PHARMACY",
+        role: "KASIR",
+        permissions: ["can_stock_opname"],
+      },
+    ],
+  },
+
+  // 4. Manajer Toko Mainan (Budi Santoso) - Password: budi123
+  "budi@pasarlelea.com": {
+    id: "usr-03",
+    name: "Budi Santoso",
+    email: "budi@pasarlelea.com",
+    hashedPassword: BCRYPT_BUDI123,
+    role: "MANAJER",
+    isActive: true,
+    businessAccesses: [
+      {
+        businessId: "biz-toko-mainan-lelea",
+        businessSlug: "toko-mainan-pasar-lelea",
+        businessName: "Toko Mainan Pasar Lelea",
+        businessType: "RETAIL_TOYS",
+        role: "MANAGER",
+        permissions: DEFAULT_PERMISSIONS.MANAGER,
+      },
+    ],
+  },
+  "kasir.mainan@gigin.com": {
+    id: "usr-03",
+    name: "Budi Santoso",
+    email: "kasir.mainan@gigin.com",
+    hashedPassword: BCRYPT_BUDI123,
+    role: "MANAJER",
+    isActive: true,
+    businessAccesses: [
+      {
+        businessId: "biz-toko-mainan-lelea",
+        businessSlug: "toko-mainan-pasar-lelea",
+        businessName: "Toko Mainan Pasar Lelea",
+        businessType: "RETAIL_TOYS",
+        role: "MANAGER",
+        permissions: DEFAULT_PERMISSIONS.MANAGER,
+      },
+    ],
+  },
+
+  // 5. Kasir Toko Mainan (Ahmad Fauzi) - Password: ahmad123 (NONAKTIF/DIBLOKIR)
+  "ahmad@pasarlelea.com": {
+    id: "usr-04",
+    name: "Ahmad Fauzi",
+    email: "ahmad@pasarlelea.com",
+    hashedPassword: BCRYPT_AHMAD123,
+    role: "KASIR",
+    isActive: false,
+    businessAccesses: [
+      {
+        businessId: "biz-toko-mainan-lelea",
+        businessSlug: "toko-mainan-pasar-lelea",
+        businessName: "Toko Mainan Pasar Lelea",
+        businessType: "RETAIL_TOYS",
+        role: "KASIR",
+        permissions: ["can_stock_opname"],
+      },
+    ],
+  },
+
+  // 6. Kasir Multi-Cabang (Dewi Lestari) - Password: dewi123
+  "dewi.multicabang@gigins.com": {
+    id: "usr-05",
+    name: "Dewi Lestari",
+    email: "dewi.multicabang@gigins.com",
+    hashedPassword: BCRYPT_DEWI123,
+    role: "KASIR",
+    isActive: true,
+    businessAccesses: [
+      {
+        businessId: "biz-apotik-tamansari",
+        businessSlug: "apotik-tamansari",
+        businessName: "Apotik Tamansari",
+        businessType: "PHARMACY",
+        role: "KASIR",
+        permissions: ["can_stock_opname"],
+      },
+      {
+        businessId: "biz-toko-mainan-lelea",
+        businessSlug: "toko-mainan-pasar-lelea",
+        businessName: "Toko Mainan Pasar Lelea",
+        businessType: "RETAIL_TOYS",
+        role: "KASIR",
+        permissions: ["can_stock_opname"],
       },
     ],
   },

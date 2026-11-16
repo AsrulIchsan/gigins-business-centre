@@ -6,7 +6,7 @@
  * Kelola seluruh akun pegawai, penugasan unit bisnis, template role & izin granular.
  */
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import {
   Shield,
@@ -222,6 +222,22 @@ export default function AccessControlPage() {
   const [roleFilter, setRoleFilter] = useState<string>("ALL");
   const [statusFilter, setStatusFilter] = useState<string>("ALL");
 
+  // Fetch Live Users from Server
+  useEffect(() => {
+    async function loadUsers() {
+      try {
+        const res = await fetch("/api/admin/users", { cache: "no-store" });
+        const data = await res.json();
+        if (data.success && Array.isArray(data.data) && data.data.length > 0) {
+          setUsers(data.data);
+        }
+      } catch (err) {
+        console.error("Gagal memuat daftar pegawai dari server:", err);
+      }
+    }
+    loadUsers();
+  }, []);
+
   // Password visibility & copy states
   const [showPasswordMap, setShowPasswordMap] = useState<Record<string, boolean>>({});
   const [copiedId, setCopiedId] = useState<string | null>(null);
@@ -430,6 +446,7 @@ export default function AccessControlPage() {
           password: targetPassword,
           role: roleApotik || roleMainan,
           permissions: assignApotik ? permissionsApotik : permissionsMainan,
+          assignedBusinesses: assigned,
           isActive: formActive,
           businessSlug: assignApotik && assignMainan ? "all" : assignApotik ? "apotik-tamansari" : "toko-mainan-pasar-lelea",
           action: editingUserId ? "UPDATE" : "CREATE",

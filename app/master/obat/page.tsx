@@ -98,6 +98,21 @@ export default function MasterObatPage() {
       defaultMarginPct: newMargin,
     };
     setProducts([newProd, ...products]);
+
+    // Push to Centralized Audit Log
+    fetch("/api/audit-logs", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        actionType: "ACTIVITY",
+        module: "PRODUCT",
+        action: "CREATE",
+        entityId: newProd.id,
+        entityName: newName,
+        description: `Penambahan master obat baru "${newName}" (Kategori: ${newCategory}, Satuan: ${newBaseUnit}, Stok awal: ${newStock}, Harga Jual: Rp ${sellPrice.toLocaleString("id-ID")})`,
+        newData: { name: newName, totalStock: newStock, sellPrice, buyPrice: newHpp },
+      }),
+    }).catch((err) => console.warn("Failed to push audit log:", err));
     setIsAddModalOpen(false);
     setNewName("");
     setNewGenericName("");
@@ -203,6 +218,22 @@ export default function MasterObatPage() {
     };
 
     setPriceLogs([newLog, ...priceLogs]);
+
+    // Push to Centralized Audit Log
+    fetch("/api/audit-logs", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        actionType: "ACTIVITY",
+        module: "PRODUCT",
+        action: "UPDATE",
+        entityId: selectedProduct.id,
+        entityName: selectedProduct.name,
+        description: `Perubahan harga jual obat "${selectedProduct.name}" (${selectedProduct.units[targetUnitIndex].unitName}): Rp ${oldPrice.toLocaleString("id-ID")} -> Rp ${newSellPrice.toLocaleString("id-ID")}. Alasan: ${priceChangeReason || "Penyesuaian margin berkala"}`,
+        oldData: { sellPrice: oldPrice, margin: oldMargin },
+        newData: { sellPrice: newSellPrice, margin: newMarginPct, reason: priceChangeReason },
+      }),
+    }).catch((err) => console.warn("Failed to push audit log:", err));
     setIsPriceModalOpen(false);
   };
 

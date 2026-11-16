@@ -99,13 +99,38 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { actionType, ...data } = body;
 
+    const ipAddress =
+      request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
+      request.headers.get("x-real-ip") ||
+      "127.0.0.1";
+    const userAgent = request.headers.get("user-agent") || "";
+
+    // Extract current authenticated user from cookie if not explicitly provided in body
+    let currentUserProfile: any = null;
+    const profileCookie = request.cookies.get("user_profile")?.value;
+    if (profileCookie) {
+      try {
+        currentUserProfile = JSON.parse(profileCookie);
+      } catch {}
+    }
+
     if (actionType === "LOGIN") {
-      const log = await appendLoginLog(data);
+      const log = await appendLoginLog({
+        ...data,
+        ipAddress: data.ipAddress || ipAddress,
+        userAgent: data.userAgent || userAgent,
+      });
       return NextResponse.json({ success: true, log });
     }
 
     if (actionType === "ACTIVITY") {
-      const log = await appendActivityLog(data);
+      const log = await appendActivityLog({
+        ...data,
+        userId: data.userId || currentUserProfile?.id || "usr-current",
+        userName: data.userName || currentUserProfile?.name || "Petugas Apotek",
+        userRole: data.userRole || currentUserProfile?.role || "KASIR",
+        ipAddress: data.ipAddress || ipAddress,
+      });
       return NextResponse.json({ success: true, log });
     }
 

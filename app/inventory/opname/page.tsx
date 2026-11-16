@@ -87,6 +87,21 @@ export default function StokOpnameMobilePage() {
 
   const handleSubmit = () => {
     setSubmitted(true);
+
+    fetch("/api/audit-logs", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        actionType: "ACTIVITY",
+        module: "STOCK",
+        action: "UPDATE",
+        entityId: `OPN-${Date.now().toString().slice(-6)}`,
+        entityName: "Stok Opname Fisik",
+        description: `Penyelesaian Stok Opname Fisik Apotek: ${totalItems} item dihitung (${matchCount} cocok rak, ${mismatchCount} terdapat selisih fisik). Status: DRAFT / Menunggu Approval Apoteker`,
+        newData: { totalItems, matchCount, mismatchCount },
+      }),
+    }).catch((err) => console.warn("Failed to push audit log:", err));
+
     setTimeout(() => {
       alert("Stok Opname berhasil disimpan sebagai DRAFT & diteruskan ke Apoteker untuk Approval!");
     }, 300);

@@ -17,6 +17,7 @@ import {
   AuthSession,
 } from "@/lib/auth";
 import { logLogin, logActivity, checkDatabaseAvailable } from "@/lib/logger";
+import { findUserByIdentifier } from "@/lib/user-storage";
 
 export async function POST(request: NextRequest) {
   try {
@@ -36,71 +37,84 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    let email = rawEmail.toLowerCase().trim();
+    const trimmedInput = rawEmail.trim();
+    let email = trimmedInput.toLowerCase();
 
-    // Mapping alias username ke akun resmi sistem
-    if (email === "owner" || email === "gigin" || email === "owner@apotiktamansari.com") {
-      email = "owner@gigin.com";
-    } else if (email === "admin" || email === "administrator" || email === "apoteker") {
-      email = "admin@apotiktamansari.com";
-    } else if (email === "kasir" || email === "kasir.apotik" || email === "kasir-apotik" || email === "kasir@apotik.com") {
-      email = "kasir.apotik@gigin.com";
-    } else if (email === "kasir.mainan" || email === "kasir-mainan") {
-      email = "kasir.mainan@gigin.com";
-    }
-
-    // 1. Cari user di Database Prisma (hanya jika DB server online)
-    let dbUser: any = null;
-    let isDbOnline = false;
-
-    const dbAvailable = await checkDatabaseAvailable();
-    if (dbAvailable) {
-      try {
-        dbUser = await prisma.user.findUnique({
-          where: { email },
-          include: {
-            businessAccesses: {
-              include: {
-                business: true,
-              },
-            },
-          },
-        });
-        isDbOnline = true;
-      } catch (err: any) {
-        console.warn("[Auth Login] Database query unavailable, falling back to secure credentials:", err?.message);
-      }
-    }
-
-    // 2. Jika tidak ada di DB (atau DB offline), cek fallback data ter-enkripsi
+    // 1. Cari user dari Master User Storage (data/users.json — terhubung langsung ke Role & Access Control)
     let userRecord: {
       id: string;
       name: string;
       email: string;
+      password?: string;
       hashedPassword: string;
       role: any;
       isActive: boolean;
       businessAccesses: any[];
     } | null = null;
 
-    if (dbUser) {
+    const storedUser = findUserByIdentifier(trimmedInput);
+    if (storedUser) {
       userRecord = {
-        id: dbUser.id,
-        name: dbUser.name,
-        email: dbUser.email,
-        hashedPassword: dbUser.hashedPassword,
-        role: dbUser.role,
-        isActive: dbUser.isActive,
-        businessAccesses: dbUser.businessAccesses.map((acc: any) => ({
-          businessId: acc.businessId,
-          businessSlug: acc.business?.slug ?? "apotik-tamansari",
-          businessName: acc.business?.name ?? "Apotik Tamansari",
-          businessType: acc.business?.type ?? "PHARMACY",
-          role: acc.role,
-          permissions: Array.isArray(acc.permissions) ? acc.permissions : [],
+        id: storedUser.id,
+        name: storedUser.name,
+        email: storedUser.email,
+        password: storedUser.password,
+        hashedPassword: storedUser.hashedPassword,
+        role: storedUser.role,
+        isActive: storedUser.isActive,
+        businessAccesses: (storedUser.assignedBusinesses || []).map((b) => ({
+          businessId: `biz-${b.slug}`,
+          businessSlug: b.slug,
+          businessName: b.name,
+          businessType: b.type,
+          role: b.role,
+          permissions: b.permissions || [],
         })),
       };
-    } else if (FALLBACK_USERS[email]) {
+      email = storedUser.email.toLowerCase();
+    }
+
+    // 2. Jika tidak ada di user-storage, cek Database Prisma (jika DB server online)
+    if (!userRecord) {
+      const dbAvailable = await checkDatabaseAvailable();
+      if (dbAvailable) {
+        try {
+          const dbUser = await prisma.user.findUnique({
+            where: { email },
+            include: {
+              businessAccesses: {
+                include: {
+                  business: true,
+                },
+              },
+            },
+          });
+          if (dbUser) {
+            userRecord = {
+              id: dbUser.id,
+              name: dbUser.name,
+              email: dbUser.email,
+              hashedPassword: dbUser.hashedPassword,
+              role: dbUser.role,
+              isActive: dbUser.isActive,
+              businessAccesses: dbUser.businessAccesses.map((acc: any) => ({
+                businessId: acc.businessId,
+                businessSlug: acc.business?.slug ?? "apotik-tamansari",
+                businessName: acc.business?.name ?? "Apotik Tamansari",
+                businessType: acc.business?.type ?? "PHARMACY",
+                role: acc.role,
+                permissions: Array.isArray(acc.permissions) ? acc.permissions : [],
+              })),
+            };
+          }
+        } catch (err: any) {
+          console.warn("[Auth Login] Database query unavailable:", err?.message);
+        }
+      }
+    }
+
+    // 3. Jika belum ditemukan juga, cek fallback dictionary
+    if (!userRecord && FALLBACK_USERS[email]) {
       const fb = FALLBACK_USERS[email];
       userRecord = {
         id: fb.id,
@@ -113,12 +127,12 @@ export async function POST(request: NextRequest) {
       };
     }
 
-    // 3. Jika user tidak ditemukan sama sekali
+    // 4. Jika user tidak ditemukan sama sekali
     if (!userRecord) {
       await logLogin({
         userId: "unknown",
-        userName: `Percobaan Login Tak Dikenal`,
-        userEmail: email,
+        userName: `Percobaan Login: ${trimmedInput}`,
+        userEmail: trimmedInput.includes("@") ? trimmedInput : "-",
         role: "UNKNOWN",
         businessName: "Portal Utama",
         businessSlug: "all",
@@ -126,7 +140,7 @@ export async function POST(request: NextRequest) {
         userAgent,
         deviceInfo: userAgent,
         status: "FAILED",
-        failReason: "Email tidak terdaftar di sistem",
+        failReason: "Akun atau email tidak terdaftar di sistem",
       }).catch(() => {});
 
       return NextResponse.json(
@@ -135,7 +149,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 4. Validasi status akun (isActive: true)
+    // 5. Validasi status akun (isActive: true)
     if (!userRecord.isActive) {
       await logLogin({
         userId: userRecord.id,
@@ -161,14 +175,14 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 5. Verifikasi Password dengan bcrypt
-    let isPasswordValid = await bcrypt.compare(password, userRecord.hashedPassword);
-    if (!isPasswordValid) {
-      // Izinkan password resmi sistem pada mode offline/fallback
-      const ACCEPTED_PASSWORDS = ["password123", "admin123", "admin", "tamansari", "gigin2026"];
-      if (ACCEPTED_PASSWORDS.includes(password.trim())) {
-        isPasswordValid = true;
-      }
+    // 6. Verifikasi Password secara ketat (bcrypt hash atau password resmi aktif)
+    // Backdoor password123 telah DIHAPUS demi keamanan enterprise.
+    let isPasswordValid = false;
+    if (userRecord.hashedPassword) {
+      isPasswordValid = await bcrypt.compare(password, userRecord.hashedPassword);
+    }
+    if (!isPasswordValid && userRecord.password && userRecord.password === password) {
+      isPasswordValid = true;
     }
 
     if (!isPasswordValid) {
@@ -193,7 +207,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 6. Login Sukses — Catat ke LoginHistory & ActivityLog
+    // 7. Login Sukses — Catat ke LoginHistory & ActivityLog
     const primaryBiz = userRecord.businessAccesses[0];
     await logLogin({
       userId: userRecord.id,
@@ -220,7 +234,7 @@ export async function POST(request: NextRequest) {
       action: "LOGIN",
       entityId: userRecord.id,
       entityName: userRecord.name,
-      description: `Pengguna ${userRecord.name} (${userRecord.role}) berhasil login ke sistem.`,
+      description: `Pengguna ${userRecord.name} (${userRecord.role}) berhasil login ke sistem melalui ${userAgent.includes("Mobile") ? "Perangkat Mobile / HP" : "Desktop Browser"}.`,
       ipAddress,
     }).catch(() => {});
 

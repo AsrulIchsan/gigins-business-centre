@@ -221,6 +221,22 @@ export default function KartuStokPage() {
 
     updateProductBatches(product.id, updatedBatches, editBatchForm.reason);
 
+    // Push to Centralized Audit Log API
+    fetch("/api/audit-logs", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        actionType: "ACTIVITY",
+        module: "STOCK",
+        action: "UPDATE",
+        entityId: product.id,
+        entityName: product.name,
+        description: `Koreksi stok batch "${editBatchForm.batchNumber}" (Batch: ${oldQty} -> ${newQty}, Total: ${prevTotal} -> ${newTotal} ${product.baseUnit}). Alasan: ${editBatchForm.reason}`,
+        oldData: { batchNumber: editingBatch.batchNumber, quantity: oldQty, totalStock: prevTotal },
+        newData: { batchNumber: editBatchForm.batchNumber, quantity: newQty, totalStock: newTotal },
+      }),
+    }).catch((err) => console.warn("Failed to push audit log:", err));
+
     // Record Mutation
     const newMut: StockMutationItem = {
       id: `mut-${Date.now()}`,
@@ -272,6 +288,22 @@ export default function KartuStokPage() {
       buyPrice: Number(addBatchForm.buyPrice),
     });
 
+    // Push to Centralized Audit Log API
+    fetch("/api/audit-logs", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        actionType: "ACTIVITY",
+        module: "STOCK",
+        action: "CREATE",
+        entityId: product.id,
+        entityName: product.name,
+        description: `Penambahan batch baru "${addBatchForm.batchNumber}" (+${addedQty} ${product.baseUnit}) untuk ${product.name}. Total: ${prevTotal} -> ${newTotal}. Alasan: ${addBatchForm.reason}`,
+        oldData: { totalStock: prevTotal },
+        newData: { batchNumber: addBatchForm.batchNumber, addedQty, totalStock: newTotal },
+      }),
+    }).catch((err) => console.warn("Failed to push audit log:", err));
+
     // Record Mutation
     const newMut: StockMutationItem = {
       id: `mut-${Date.now()}`,
@@ -313,6 +345,22 @@ export default function KartuStokPage() {
     const diff = newStock - prevStock;
 
     updateProductStock(product.id, newStock, adjustStockForm.reason);
+
+    // Push to Centralized Audit Log API
+    fetch("/api/audit-logs", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        actionType: "ACTIVITY",
+        module: "STOCK",
+        action: "UPDATE",
+        entityId: product.id,
+        entityName: product.name,
+        description: `Penyesuaian stok total obat "${product.name}" dari ${prevStock} menjadi ${newStock} ${product.baseUnit} (Selisih: ${diff > 0 ? `+${diff}` : diff}). Alasan: ${adjustStockForm.reason}`,
+        oldData: { totalStock: prevStock },
+        newData: { totalStock: newStock, reason: adjustStockForm.reason },
+      }),
+    }).catch((err) => console.warn("Failed to push audit log:", err));
 
     const newMut: StockMutationItem = {
       id: `mut-${Date.now()}`,
@@ -357,6 +405,22 @@ export default function KartuStokPage() {
     const newTotal = prevTotal - targetBatch.quantity;
     const updatedBatches = product.batches.filter((b) => b.id !== batchId);
     updateProductBatches(product.id, updatedBatches, "Hapus batch kedaluwarsa/kosong");
+
+    // Push to Centralized Audit Log API
+    fetch("/api/audit-logs", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        actionType: "ACTIVITY",
+        module: "STOCK",
+        action: "DELETE",
+        entityId: product.id,
+        entityName: product.name,
+        description: `Penghapusan batch "${targetBatch.batchNumber}" (-${targetBatch.quantity} ${product.baseUnit}) pada obat "${product.name}". Total stok: ${prevTotal} -> ${newTotal}`,
+        oldData: { batchNumber: targetBatch.batchNumber, quantity: targetBatch.quantity, totalStock: prevTotal },
+        newData: { totalStock: newTotal },
+      }),
+    }).catch((err) => console.warn("Failed to push audit log:", err));
 
     const newMut: StockMutationItem = {
       id: `mut-${Date.now()}`,
