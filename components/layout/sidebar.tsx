@@ -107,6 +107,7 @@ export function Sidebar() {
         {
           title: "PORTAL & KEAMANAN (OWNER)",
           items: [
+            { title: "Pengaturan Webstore", href: "/settings/webstore", icon: Settings, badge: "Owner" },
             { title: "Portal Utama Gigin's Hub", href: "/hub", icon: Building2, badge: "Hub" },
             { title: "Role & Access Control", href: "/hub/access-control", icon: ShieldCheck, badge: "RBAC" },
             { title: "Login & Audit Logs", href: "/hub/audit-logs", icon: History, badge: "Log" },
@@ -160,6 +161,7 @@ export function Sidebar() {
         {
           title: "PORTAL & KEAMANAN (OWNER)",
           items: [
+            { title: "Pengaturan Webstore", href: "/settings/webstore", icon: Settings, badge: "Owner" },
             { title: "Portal Utama Gigin's Hub", href: "/hub", icon: Building2, badge: "Hub" },
             { title: "Role & Access Control", href: "/hub/access-control", icon: ShieldCheck, badge: "RBAC" },
             { title: "Login & Audit Logs", href: "/hub/audit-logs", icon: History, badge: "Log" },
@@ -238,13 +240,16 @@ export function Sidebar() {
               {section.items.map((item) => {
                 const isDynamicRoute = pathname?.startsWith("/b/");
                 const currentSlug = activeBusiness.slug;
-                const targetHref = item.href.startsWith("/hub") || item.href.startsWith("/login")
-                  ? item.href
-                  : isDynamicRoute
-                    ? item.href === "/"
-                      ? `/b/${currentSlug}/dashboard`
-                      : `/b/${currentSlug}${item.href}`
-                    : item.href;
+                const targetHref =
+                  item.href.startsWith("/hub") ||
+                  item.href.startsWith("/login") ||
+                  item.href.startsWith("/store")
+                    ? item.href
+                    : isDynamicRoute
+                      ? item.href === "/"
+                        ? `/b/${currentSlug}/dashboard`
+                        : `/b/${currentSlug}${item.href}`
+                      : item.href;
                 const isActive = isDynamicRoute
                   ? pathname === targetHref
                   : pathname === item.href;

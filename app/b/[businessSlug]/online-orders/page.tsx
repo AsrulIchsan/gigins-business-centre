@@ -23,6 +23,7 @@ import {
   Phone,
   User,
   Calendar,
+  Eye,
 } from "lucide-react";
 import { formatRupiah, formatDateIndo } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -57,7 +58,10 @@ interface OnlineOrder {
   phone: string;
   items: OrderItem[];
   totalAmount: number;
-  status: "PENDING" | "PROCESSING" | "COMPLETED" | "CANCELLED" | string;
+  status: "PENDING" | "PROCESSING" | "SHIPPED" | "COMPLETED" | "CANCELLED" | string;
+  paymentProof?: string;
+  paymentProofUploadedAt?: string;
+  paymentMethod?: string;
   notes?: string;
   createdAt: string;
 }
@@ -76,6 +80,8 @@ export default function BusinessOnlineOrdersPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedOrderForPOS, setSelectedOrderForPOS] = useState<OnlineOrder | null>(null);
   const [isPOSDialogOpen, setIsPOSDialogOpen] = useState(false);
+  const [selectedProofOrder, setSelectedProofOrder] = useState<OnlineOrder | null>(null);
+  const [isProofDialogOpen, setIsProofDialogOpen] = useState(false);
 
   // Fetch orders from API
   const fetchOrders = async (silent = false) => {
@@ -333,12 +339,13 @@ export default function BusinessOnlineOrdersPage() {
           </div>
 
           {/* Status Filter */}
-          <div className="flex items-center gap-1.5 shrink-0">
+          <div className="flex items-center gap-1.5 shrink-0 overflow-x-auto pb-1 md:pb-0">
             <span className="text-xs font-bold text-slate-400 mr-1">Status:</span>
             {[
               { id: "ALL", label: "Semua" },
               { id: "PENDING", label: "Pending" },
-              { id: "PROCESSING", label: "Diproses" },
+              { id: "PROCESSING", label: "Proses" },
+              { id: "SHIPPED", label: "Kirim / Siap Diambil" },
               { id: "COMPLETED", label: "Selesai" },
             ].map((st) => (
               <button
@@ -476,24 +483,47 @@ export default function BusinessOnlineOrdersPage() {
 
                         {/* Status */}
                         <td className="p-3 text-center align-top">
-                          <Badge
-                            variant={
-                              ord.status === "COMPLETED"
-                                ? "success"
-                                : ord.status === "PROCESSING"
-                                ? "warning"
-                                : "destructive"
-                            }
-                            className="text-[10px] uppercase font-bold"
-                          >
-                            {ord.status === "PENDING"
-                              ? "Menunggu"
-                              : ord.status === "PROCESSING"
-                              ? "Disiapkan"
-                              : ord.status === "COMPLETED"
-                              ? "Selesai"
-                              : ord.status}
-                          </Badge>
+                          {ord.status === "PENDING" && (
+                            <Badge variant="warning" className="text-[10px] bg-amber-500 hover:bg-amber-500 text-white font-bold">
+                              Pending
+                            </Badge>
+                          )}
+                          {ord.status === "PROCESSING" && (
+                            <Badge variant="cyan" className="text-[10px] bg-blue-600 hover:bg-blue-600 text-white font-bold">
+                              Proses
+                            </Badge>
+                          )}
+                          {ord.status === "SHIPPED" && (
+                            <Badge variant="purple" className="text-[10px] bg-purple-600 hover:bg-purple-600 text-white font-bold">
+                              Kirim / Siap Diambil
+                            </Badge>
+                          )}
+                          {ord.status === "COMPLETED" && (
+                            <Badge variant="success" className="text-[10px] bg-emerald-600 hover:bg-emerald-600 text-white font-bold">
+                              Selesai
+                            </Badge>
+                          )}
+                          {ord.status === "CANCELLED" && (
+                            <Badge variant="destructive" className="text-[10px] font-bold">
+                              Dibatalkan
+                            </Badge>
+                          )}
+
+                          {ord.paymentProof && (
+                            <div className="mt-1.5">
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setSelectedProofOrder(ord);
+                                  setIsProofDialogOpen(true);
+                                }}
+                                className="inline-flex items-center gap-1 text-[10px] bg-emerald-50 text-emerald-800 border border-emerald-300 hover:bg-emerald-100 px-2 py-0.5 rounded-full font-semibold transition-colors"
+                              >
+                                <Eye className="h-3 w-3 text-emerald-600" />
+                                Bukti Bayar Ada
+                              </button>
+                            </div>
+                          )}
                         </td>
 
                         {/* Actions */}
@@ -508,28 +538,54 @@ export default function BusinessOnlineOrdersPage() {
                             Proses ke POS
                           </Button>
 
-                          <div className="flex items-center justify-end gap-1">
-                            {ord.status === "PENDING" && (
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={() => handleUpdateStatus(ord.id, "PROCESSING")}
-                                className="h-6 text-[10px] px-2 text-blue-700 border-blue-200 hover:bg-blue-50"
-                              >
-                                Siapkan Obat
-                              </Button>
-                            )}
+                          {/* Quick Step Advance Buttons */}
+                          {ord.status === "PENDING" && (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => handleUpdateStatus(ord.id, "PROCESSING")}
+                              className="h-6 text-[10px] px-2 w-full text-blue-700 border-blue-200 hover:bg-blue-50 font-bold"
+                            >
+                              &rarr; Mulai Proses / Racik
+                            </Button>
+                          )}
 
-                            {ord.status === "PROCESSING" && (
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={() => handleUpdateStatus(ord.id, "COMPLETED")}
-                                className="h-6 text-[10px] px-2 text-emerald-700 border-emerald-200 hover:bg-emerald-50"
-                              >
-                                Kirim ke Kurir
-                              </Button>
-                            )}
+                          {ord.status === "PROCESSING" && (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => handleUpdateStatus(ord.id, "SHIPPED")}
+                              className="h-6 text-[10px] px-2 w-full text-purple-700 border-purple-200 hover:bg-purple-50 font-bold"
+                            >
+                              &rarr; Kirim / Siap Diambil
+                            </Button>
+                          )}
+
+                          {ord.status === "SHIPPED" && (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => handleUpdateStatus(ord.id, "COMPLETED")}
+                              className="h-6 text-[10px] px-2 w-full text-emerald-700 border-emerald-200 hover:bg-emerald-50 font-bold"
+                            >
+                              &rarr; Tandai Selesai
+                            </Button>
+                          )}
+
+                          {/* Direct Status Selector */}
+                          <div className="flex items-center justify-end gap-1 pt-1">
+                            <select
+                              value={ord.status}
+                              onChange={(e) => handleUpdateStatus(ord.id, e.target.value)}
+                              className="text-[10px] h-6 px-1.5 bg-slate-50 border border-slate-200 rounded font-medium text-slate-700 focus:outline-none"
+                              title="Ubah status pesanan"
+                            >
+                              <option value="PENDING">Pending</option>
+                              <option value="PROCESSING">Proses</option>
+                              <option value="SHIPPED">Kirim / Siap Diambil</option>
+                              <option value="COMPLETED">Selesai</option>
+                              <option value="CANCELLED">Batal</option>
+                            </select>
 
                             <Button
                               variant="ghost"
@@ -627,6 +683,70 @@ export default function BusinessOnlineOrdersPage() {
               Lanjutkan ke Kasir POS &rarr;
             </Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog Preview Bukti Pembayaran dari Customer */}
+      <Dialog open={isProofDialogOpen} onOpenChange={setIsProofDialogOpen}>
+        <DialogContent onClose={() => setIsProofDialogOpen(false)} className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-slate-800">
+              <Eye className="h-5 w-5 text-emerald-600" />
+              Bukti Pembayaran Pelanggan
+            </DialogTitle>
+            <DialogDescription className="text-xs">
+              Verifikasi transfer atau scan QRIS yang diunggah oleh pelanggan webstore
+            </DialogDescription>
+          </DialogHeader>
+
+          {selectedProofOrder && (
+            <div className="space-y-3 py-2 text-xs">
+              <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 space-y-1">
+                <div className="flex justify-between">
+                  <span className="text-slate-500">Nomor Pesanan:</span>
+                  <span className="font-mono font-bold text-slate-900">{selectedProofOrder.orderNumber}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-slate-500">Nama Pelanggan:</span>
+                  <span className="font-bold text-slate-800">{selectedProofOrder.customerName}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-slate-500">Total Tagihan:</span>
+                  <span className="font-black text-emerald-700">{formatRupiah(selectedProofOrder.totalAmount)}</span>
+                </div>
+              </div>
+
+              {/* Bukti Bayar Image Display */}
+              <div className="rounded-xl border border-slate-200 p-2 bg-slate-100 text-center">
+                {selectedProofOrder.paymentProof ? (
+                  <img
+                    src={selectedProofOrder.paymentProof}
+                    alt="Bukti Transfer Pelanggan"
+                    className="max-h-72 mx-auto rounded-lg object-contain shadow-sm"
+                  />
+                ) : (
+                  <p className="py-8 text-slate-400">Belum ada file bukti bayar.</p>
+                )}
+              </div>
+
+              <div className="flex items-center justify-between pt-2">
+                <span className="text-[11px] text-slate-400">
+                  Status saat ini: <b>{selectedProofOrder.status}</b>
+                </span>
+                <Button
+                  size="sm"
+                  onClick={() => {
+                    handleUpdateStatus(selectedProofOrder.id, "PROCESSING");
+                    setIsProofDialogOpen(false);
+                  }}
+                  className="bg-emerald-600 hover:bg-emerald-700 text-xs font-bold"
+                >
+                  <Check className="mr-1 h-3.5 w-3.5" />
+                  Verifikasi & Setujui Pesanan
+                </Button>
+              </div>
+            </div>
+          )}
         </DialogContent>
       </Dialog>
     </div>

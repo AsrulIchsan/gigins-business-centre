@@ -25,6 +25,7 @@ import {
 } from "lucide-react";
 import { useStore } from "@/lib/store-context";
 import { formatRupiah } from "@/lib/utils";
+import { getLocalStoreSettings, WebstoreSettings } from "@/lib/store-settings";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -49,6 +50,19 @@ export default function StoreCheckoutPage() {
   const [customerAddress, setCustomerAddress] = useState("");
   const [customerEmail, setCustomerEmail] = useState(""); // Opsional
 
+  // Webstore dynamic settings (ongkir, QRIS, bank)
+  const [settings, setSettings] = useState<WebstoreSettings>(() => getLocalStoreSettings());
+  const [paymentProof, setPaymentProof] = useState<string | null>(null);
+
+  useEffect(() => {
+    fetch("/api/store/settings")
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.success && data.settings) setSettings(data.settings);
+      })
+      .catch(() => {});
+  }, []);
+
   // Shipping & Payment
   const [shippingMethod, setShippingMethod] = useState<"INSTANT" | "REGULAR" | "PICKUP">("INSTANT");
   const [paymentMethod, setPaymentMethod] = useState<"QRIS" | "TRANSFER" | "COD">("QRIS");
@@ -67,12 +81,20 @@ export default function StoreCheckoutPage() {
     }
   }, [customer]);
 
+  // Free shipping check from Owner settings
+  const isFreeShipping =
+    settings.shipping.freeShippingThreshold > 0 &&
+    cartTotal >= settings.shipping.freeShippingThreshold;
+
+  const instantCost = isFreeShipping ? 0 : settings.shipping.instantRate;
+  const regularCost = isFreeShipping ? 0 : settings.shipping.regularRate;
+
   // Shipping cost calculation
   const shippingCost =
     shippingMethod === "INSTANT"
-      ? 10000
+      ? instantCost
       : shippingMethod === "REGULAR"
-      ? 8000
+      ? regularCost
       : 0;
 
   const grandTotal = cartTotal + shippingCost;
@@ -121,9 +143,9 @@ export default function StoreCheckoutPage() {
           email: customerEmail.trim() || undefined, // Opsional
           shippingMethod:
             shippingMethod === "INSTANT"
-              ? "Kurir Instan 1-2 Jam"
+              ? settings.shipping.instantLabel
               : shippingMethod === "REGULAR"
-              ? "Kurir Reguler"
+              ? settings.shipping.regularLabel
               : "Ambil di Apotek",
           paymentMethod:
             paymentMethod === "QRIS"
@@ -131,6 +153,7 @@ export default function StoreCheckoutPage() {
               : paymentMethod === "TRANSFER"
               ? "Transfer Bank"
               : "Bayar di Tempat (COD)",
+          paymentProof: paymentProof || undefined,
           items: itemsPayload,
           totalAmount: grandTotal,
           notes: notes.trim(),
@@ -338,11 +361,13 @@ export default function StoreCheckoutPage() {
                       <Truck className="h-4 w-4" />
                     </div>
                     <div>
-                      <p className="font-bold text-slate-800">Kurir Instan Apotek (1-2 Jam)</p>
+                      <p className="font-bold text-slate-800">{settings.shipping.instantLabel}</p>
                       <p className="text-[10px] text-slate-500">GoSend / GrabExpress langsung dari apotek</p>
                     </div>
                   </div>
-                  <span className="font-bold text-emerald-700">Rp 10.000</span>
+                  <span className="font-bold text-emerald-700">
+                    {instantCost === 0 ? "GRATIS" : formatRupiah(instantCost)}
+                  </span>
                 </label>
 
                 {/* Regular */}
@@ -359,11 +384,13 @@ export default function StoreCheckoutPage() {
                       <Clock className="h-4 w-4" />
                     </div>
                     <div>
-                      <p className="font-bold text-slate-800">Ekspedisi Reguler (1-2 Hari)</p>
+                      <p className="font-bold text-slate-800">{settings.shipping.regularLabel}</p>
                       <p className="text-[10px] text-slate-500">J&T / SiCepat dengan nomor resi</p>
                     </div>
                   </div>
-                  <span className="font-bold text-slate-700">Rp 8.000</span>
+                  <span className="font-bold text-slate-700">
+                    {regularCost === 0 ? "GRATIS" : formatRupiah(regularCost)}
+                  </span>
                 </label>
 
                 {/* Pickup */}
@@ -380,8 +407,8 @@ export default function StoreCheckoutPage() {
                       <MapPin className="h-4 w-4" />
                     </div>
                     <div>
-                      <p className="font-bold text-slate-800">Ambil Sendiri di Apotik Tamansari</p>
-                      <p className="text-[10px] text-slate-500">Jl. Tamansari No. 45, Coblong, Bandung</p>
+                      <p className="font-bold text-slate-800">{settings.shipping.pickupLabel}</p>
+                      <p className="text-[10px] text-slate-500">{settings.pharmacyAddress}</p>
                     </div>
                   </div>
                   <span className="font-bold text-emerald-700">GRATIS</span>
@@ -402,46 +429,83 @@ export default function StoreCheckoutPage() {
                 </div>
               </CardHeader>
 
-              <CardContent className="p-4 sm:p-5 space-y-2.5 text-xs">
+              <CardContent className="p-4 sm:p-5 space-y-3 text-xs">
+                {/* QRIS */}
                 <label
                   onClick={() => setPaymentMethod("QRIS")}
-                  className={`flex items-center justify-between p-3 rounded-xl border cursor-pointer transition-all ${
+                  className={`block p-3 rounded-xl border cursor-pointer transition-all ${
                     paymentMethod === "QRIS"
-                      ? "border-emerald-500 bg-emerald-50/50 ring-2 ring-emerald-500/20"
+                      ? "border-emerald-500 bg-emerald-50/40 ring-2 ring-emerald-500/20"
                       : "border-slate-200 hover:border-slate-300"
                   }`}
                 >
-                  <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-lg bg-purple-100 text-purple-700 flex items-center justify-center font-bold">
-                      <QrCode className="h-4 w-4" />
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 rounded-lg bg-purple-100 text-purple-700 flex items-center justify-center font-bold">
+                        <QrCode className="h-4 w-4" />
+                      </div>
+                      <div>
+                        <p className="font-bold text-slate-800">QRIS Instan (Semua Bank & E-Wallet)</p>
+                        <p className="text-[10px] text-slate-500">BCA, Mandiri, GoPay, OVO, ShopeePay, Dana</p>
+                      </div>
                     </div>
-                    <div>
-                      <p className="font-bold text-slate-800">QRIS Instan (Semua Bank & E-Wallet)</p>
-                      <p className="text-[10px] text-slate-500">BCA, Mandiri, GoPay, OVO, ShopeePay, Dana</p>
-                    </div>
+                    <Badge variant="cyan" className="text-[9px]">Otomatis</Badge>
                   </div>
-                  <Badge variant="cyan" className="text-[9px]">Otomatis</Badge>
+
+                  {paymentMethod === "QRIS" && (
+                    <div className="mt-3 pt-3 border-t border-emerald-200 text-center space-y-2 bg-white p-3 rounded-lg">
+                      <p className="font-bold text-slate-700 text-xs">
+                        Scan Barcode QRIS Apotik Tamansari:
+                      </p>
+                      <div className="inline-block p-2 bg-white rounded-xl border shadow-sm">
+                        <img
+                          src={settings.payment.qrisImageUrl}
+                          alt="QRIS Barcode"
+                          className="w-44 h-44 object-contain mx-auto"
+                        />
+                      </div>
+                      <p className="font-mono text-[10px] text-slate-500">
+                        NMID: <b>{settings.payment.qrisNmid}</b> &bull; Apotik Tamansari
+                      </p>
+                    </div>
+                  )}
                 </label>
 
+                {/* Transfer Bank */}
                 <label
                   onClick={() => setPaymentMethod("TRANSFER")}
-                  className={`flex items-center justify-between p-3 rounded-xl border cursor-pointer transition-all ${
+                  className={`block p-3 rounded-xl border cursor-pointer transition-all ${
                     paymentMethod === "TRANSFER"
-                      ? "border-emerald-500 bg-emerald-50/50 ring-2 ring-emerald-500/20"
+                      ? "border-emerald-500 bg-emerald-50/40 ring-2 ring-emerald-500/20"
                       : "border-slate-200 hover:border-slate-300"
                   }`}
                 >
-                  <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-lg bg-blue-100 text-blue-700 flex items-center justify-center font-bold">
-                      <CreditCard className="h-4 w-4" />
-                    </div>
-                    <div>
-                      <p className="font-bold text-slate-800">Transfer Bank Manual (BCA / Mandiri)</p>
-                      <p className="text-[10px] text-slate-500">Konfirmasi bukti transfer ke WhatsApp Apoteker</p>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 rounded-lg bg-blue-100 text-blue-700 flex items-center justify-center font-bold">
+                        <CreditCard className="h-4 w-4" />
+                      </div>
+                      <div>
+                        <p className="font-bold text-slate-800">Transfer Bank ({settings.payment.bankName})</p>
+                        <p className="text-[10px] text-slate-500">Kirim ke rekening apotek resmi</p>
+                      </div>
                     </div>
                   </div>
+
+                  {paymentMethod === "TRANSFER" && (
+                    <div className="mt-3 pt-3 border-t border-blue-200 bg-blue-50/60 p-3 rounded-lg text-slate-800 space-y-1">
+                      <p className="text-[10px] text-slate-500 font-semibold">Nomor Rekening Tujuan:</p>
+                      <p className="text-sm font-mono font-black text-blue-900 tracking-wide">
+                        {settings.payment.bankAccountNumber}
+                      </p>
+                      <p className="text-[11px] text-slate-600">
+                        Atas Nama: <b>{settings.payment.bankAccountName}</b> ({settings.payment.bankName})
+                      </p>
+                    </div>
+                  )}
                 </label>
 
+                {/* COD */}
                 <label
                   onClick={() => setPaymentMethod("COD")}
                   className={`flex items-center justify-between p-3 rounded-xl border cursor-pointer transition-all ${
@@ -456,7 +520,7 @@ export default function StoreCheckoutPage() {
                     </div>
                     <div>
                       <p className="font-bold text-slate-800">Bayar di Tempat (COD / Tunai)</p>
-                      <p className="text-[10px] text-slate-500">Bayar saat kurir mengantarkan obat</p>
+                      <p className="text-[10px] text-slate-500">Bayar langsung saat kurir sampai di rumah Anda</p>
                     </div>
                   </div>
                 </label>

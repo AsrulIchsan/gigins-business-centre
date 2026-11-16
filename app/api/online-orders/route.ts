@@ -78,6 +78,16 @@ export async function GET(request: NextRequest) {
     const businessSlug = searchParams.get("businessSlug") || "apotik-tamansari";
     const channel = searchParams.get("channel");
     const status = searchParams.get("status");
+    const orderNumber = searchParams.get("orderNumber");
+    const phone = searchParams.get("phone");
+
+    // Single order lookup (e.g. for customer tracking page)
+    if (orderNumber) {
+      const single = liveOrders.find((o) => o.orderNumber.toLowerCase() === orderNumber.toLowerCase());
+      if (single) {
+        return NextResponse.json({ success: true, order: single });
+      }
+    }
 
     // Cari businessId berdasarkan slug jika DB terhubung
     let dbOrders: any[] = [];
@@ -145,6 +155,10 @@ export async function GET(request: NextRequest) {
     if (status && status !== "ALL") {
       result = result.filter((o) => o.status === status);
     }
+    if (phone && phone.trim()) {
+      const cleanPhone = phone.replace(/[^0-9]/g, "");
+      result = result.filter((o) => o.phone.replace(/[^0-9]/g, "").includes(cleanPhone));
+    }
 
     return NextResponse.json({
       success: true,
@@ -162,32 +176,55 @@ export async function GET(request: NextRequest) {
 export async function PATCH(request: NextRequest) {
   try {
     const body = await request.json();
-    const { orderId, status } = body;
+    const { orderId, orderNumber, status, paymentProof } = body;
 
-    if (!orderId || !status) {
-      return NextResponse.json({ success: false, message: "orderId and status are required" }, { status: 400 });
+    if (!orderId && !orderNumber) {
+      return NextResponse.json(
+        { success: false, message: "orderId or orderNumber is required" },
+        { status: 400 }
+      );
     }
 
+    // Find in liveOrders
+    const target = liveOrders.find(
+      (o) =>
+        (orderId && o.id === orderId) ||
+        (orderNumber && o.orderNumber.toLowerCase() === orderNumber.toLowerCase())
+    );
+
+    if (!target) {
+      return NextResponse.json(
+        { success: false, message: "Pesanan tidak ditemukan" },
+        { status: 404 }
+      );
+    }
+
+    if (status) {
+      target.status = status;
+    }
+    if (paymentProof) {
+      target.paymentProof = paymentProof;
+      target.paymentProofUploadedAt = new Date().toISOString();
+    }
+    target.updatedAt = new Date().toISOString();
+
     try {
-      await prisma.onlineOrder.update({
-        where: { id: orderId },
-        data: { status },
-      });
+      if (target.id && !target.id.startsWith("ord-web-")) {
+        await prisma.onlineOrder.update({
+          where: { id: target.id },
+          data: {
+            ...(status ? { status } : {}),
+          },
+        });
+      }
     } catch {
       // Ignore if mock ID
     }
 
-    // Update in liveOrders
-    const target = liveOrders.find((o) => o.id === orderId);
-    if (target) {
-      target.status = status;
-    }
-
     return NextResponse.json({
       success: true,
-      message: `Status pesanan ${orderId} berhasil diubah menjadi ${status}`,
-      orderId,
-      status,
+      message: `Pesanan ${target.orderNumber} berhasil diperbarui. Status: ${target.status}`,
+      order: target,
     });
   } catch (error: any) {
     return NextResponse.json(
@@ -215,6 +252,7 @@ export async function POST(request: NextRequest) {
       const target = liveOrders.find((o) => o.id === orderId);
       if (target) {
         target.status = "PROCESSING";
+        target.updatedAt = new Date().toISOString();
       }
 
       return NextResponse.json({
@@ -239,6 +277,11 @@ export async function POST(request: NextRequest) {
         channelLabel: "Webstore Apotik Tamansari",
         customerName: body.customerName || "Pelanggan Online",
         phone: body.phone || "-",
+        customerAddress: body.address || "-",
+        shippingMethod: body.shippingMethod || "Kurir Instan Apotik",
+        paymentMethod: body.paymentMethod || "QRIS",
+        paymentProof: body.paymentProof || null,
+        paymentProofUploadedAt: body.paymentProof ? now.toISOString() : null,
         items: (body.items || []).map((it: any, idx: number) => ({
           id: `item-${Date.now()}-${idx}`,
           productName: it.productName || it.name,
@@ -251,6 +294,7 @@ export async function POST(request: NextRequest) {
         status: "PENDING",
         notes: body.notes || `Kirim ke: ${body.address || "-"}. Opsi: ${body.shippingMethod || "Kurir Apotek"} (${body.paymentMethod || "QRIS"})`,
         createdAt: now.toISOString(),
+        updatedAt: now.toISOString(),
       };
 
       liveOrders.unshift(newOrder);

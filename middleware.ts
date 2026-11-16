@@ -72,6 +72,11 @@ export async function middleware(request: NextRequest) {
     if (pathname === "/") {
       return NextResponse.rewrite(new URL("/store", request.url));
     }
+    // Keamanan & Isolasi: Cegah kebocoran sistem internal staf dari subdomain webstore
+    const INTERNAL_PREFIXES = ["/pos", "/online-orders", "/hub", "/b/", "/pembelian", "/inventory", "/master", "/akuntansi", "/crm", "/laporan"];
+    if (INTERNAL_PREFIXES.some((p) => pathname.startsWith(p))) {
+      return NextResponse.redirect(new URL("/store", request.url));
+    }
     if (!pathname.startsWith("/store") && !pathname.startsWith("/api") && !pathname.startsWith("/_next")) {
       return NextResponse.rewrite(new URL(`/store${pathname}`, request.url));
     }

@@ -18,6 +18,7 @@ import {
   Globe,
   Info,
   CheckCircle,
+  Package,
 } from "lucide-react";
 import { StoreProvider, useStore } from "@/lib/store-context";
 import { Button } from "@/components/ui/button";
@@ -143,6 +144,14 @@ function StoreNavbar() {
                 </Link>
               </div>
             )}
+
+            {/* Lacak Pesanan Saya */}
+            <Link href="/store/orders">
+              <Button variant="ghost" size="sm" className="text-xs text-slate-700 hover:text-emerald-700 font-semibold px-2 sm:px-3">
+                <Package className="h-3.5 w-3.5 sm:mr-1 text-emerald-600" />
+                <span className="hidden sm:inline">Pesanan Saya</span>
+              </Button>
+            </Link>
 
             {/* Cart Button */}
             <Link href="/store/checkout">
@@ -274,23 +283,27 @@ function StoreFooter() {
             </ul>
           </div>
 
-          {/* Col 4 */}
+          {/* Col 4: Layanan & Lacak Pesanan Pasien */}
           <div className="space-y-3">
-            <h4 className="font-bold text-white text-sm">Akses & Manajemen</h4>
+            <h4 className="font-bold text-white text-sm">Bantuan & Lacak Pesanan</h4>
             <p className="text-slate-400 text-[11px] leading-relaxed">
-              Khusus staf, TTK, dan kasir Apotik Tamansari:
+              Cek progres resep obat, konfirmasi pengiriman kurir, dan konsultasi kefarmasian:
             </p>
-            <div className="space-y-1.5">
-              <Link href="/login">
-                <Button variant="outline" size="sm" className="w-full text-xs text-white border-slate-700 bg-slate-800 hover:bg-slate-700">
-                  Login Staf Apotek / POS
-                </Button>
+            <div className="space-y-2 text-slate-400 text-[11px]">
+              <Link href="/store/orders" className="block p-2 rounded-lg bg-slate-800/80 hover:bg-slate-800 text-emerald-400 hover:text-emerald-300 font-semibold border border-slate-700/60 transition-colors">
+                &rarr; Lacak Status Pesanan Saya
               </Link>
-              <Link href="/online-orders">
-                <Button variant="ghost" size="sm" className="w-full text-xs text-slate-400 hover:text-white">
-                  Pantau Pesanan Online Masuk
-                </Button>
-              </Link>
+              <a
+                href="https://wa.me/628122334455?text=Halo%20Apotek%20Tamansari,%20saya%20butuh%20bantuan%20pesanan"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="block hover:underline text-slate-300"
+              >
+                &bull; Layanan Konsultasi WhatsApp: 0812-2334-455
+              </a>
+              <p className="text-slate-500 text-[10px]">
+                Seluruh produk dijamin 100% Asli dengan pengawasan Apoteker Penanggung Jawab.
+              </p>
             </div>
           </div>
         </div>
