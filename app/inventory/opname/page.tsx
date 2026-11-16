@@ -22,6 +22,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { InventoryNavTabs } from "@/components/inventory/inventory-nav-tabs";
 
 interface OpnameEntry {
   productId: string;
@@ -93,6 +94,9 @@ export default function StokOpnameMobilePage() {
 
   return (
     <div className="max-w-2xl mx-auto space-y-4 pb-20">
+      {/* Navigation Sub-Tabs */}
+      <InventoryNavTabs />
+
       {/* Top Header */}
       <div className="bg-white p-4 rounded-xl border flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
         <div>

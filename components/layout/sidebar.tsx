@@ -72,19 +72,15 @@ export function Sidebar() {
         {
           title: "MASTER DATA & INVENTORY",
           items: [
-            { title: "Master Data Obat", href: "/master/obat", icon: Pill },
-            { title: "Kartu Stok & FIFO Batch", href: "/inventory/kartu-stok", icon: Boxes },
-            { title: "Stok Opname Mobile", href: "/inventory/opname", icon: Smartphone, badge: "HP", isMobileSpecial: true },
-            { title: "Obat Konsinyasi & Bagi Hasil", href: "/inventory/konsinyasi", icon: ShoppingBag },
+            { title: "Master Data", href: "/master/obat", icon: Pill },
+            { title: "Inventory", href: "/inventory/kartu-stok", icon: Boxes },
           ],
         },
         {
           title: "PEMBELIAN & PBF",
           items: [
-            { title: "Purchase Order (PO PBF)", href: "/pembelian/po", icon: Truck },
-            { title: "Penerimaan Faktur PBF", href: "/pembelian/faktur", icon: ShoppingBag },
-            { title: "Penerimaan Faktur (HP)", href: "/pembelian/mobile", icon: Smartphone, badge: "HP", isMobileSpecial: true },
-            { title: "Retur Pembelian PBF", href: "/pembelian/retur", icon: RotateCcw },
+            { title: "Pembelian", href: "/pembelian/po", icon: Truck },
+            { title: "PBF", href: "/pembelian/faktur", icon: ShoppingBag },
           ],
         },
         {
@@ -130,18 +126,15 @@ export function Sidebar() {
         {
           title: "KATALOG MAINAN & GUDANG",
           items: [
-            { title: "Master Produk Mainan", href: "/master/obat", icon: Tag },
-            { title: "Kartu Stok & Rak Toko", href: "/inventory/kartu-stok", icon: Boxes },
-            { title: "Stok Opname Cepat (HP)", href: "/inventory/opname", icon: Smartphone, badge: "HP", isMobileSpecial: true },
+            { title: "Master Data", href: "/master/obat", icon: Tag },
+            { title: "Inventory", href: "/inventory/kartu-stok", icon: Boxes },
           ],
         },
         {
           title: "PEMBELIAN & DISTRIBUTOR",
           items: [
-            { title: "Purchase Order (PO Grosir)", href: "/pembelian/po", icon: Truck },
-            { title: "Penerimaan Barang Toko", href: "/pembelian/faktur", icon: ShoppingBag },
-            { title: "Penerimaan Barang (HP)", href: "/pembelian/mobile", icon: Smartphone, badge: "HP", isMobileSpecial: true },
-            { title: "Retur ke Supplier", href: "/pembelian/retur", icon: RotateCcw },
+            { title: "Pembelian", href: "/pembelian/po", icon: Truck },
+            { title: "PBF / Distributor", href: "/pembelian/faktur", icon: ShoppingBag },
           ],
         },
         {
@@ -254,9 +247,16 @@ export function Sidebar() {
                         : `/b/${currentSlug}${item.href}`
                       : item.href;
                 const targetPathOnly = targetHref.split("?")[0];
-                const isActive = !item.href.includes("?") && (
+                const cleanPath = pathname?.replace(new RegExp(`^/b/${currentSlug}`), "") || pathname;
+                const isExact = !item.href.includes("?") && (
                   isDynamicRoute ? pathname === targetPathOnly : pathname === item.href
                 );
+                const isSectionActive =
+                  (item.href === "/inventory/kartu-stok" && cleanPath?.startsWith("/inventory/")) ||
+                  (item.href === "/master/obat" && cleanPath?.startsWith("/master/")) ||
+                  (item.href === "/pembelian/faktur" && (cleanPath?.startsWith("/pembelian/faktur") || cleanPath?.startsWith("/pembelian/mobile") || cleanPath?.startsWith("/pembelian/retur"))) ||
+                  (item.href === "/pembelian/po" && cleanPath?.startsWith("/pembelian/po"));
+                const isActive = isExact || isSectionActive;
                 const Icon = item.icon;
                 return (
                   <Link

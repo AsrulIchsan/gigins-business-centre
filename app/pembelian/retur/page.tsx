@@ -18,6 +18,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { SearchableCombobox } from "@/components/ui/searchable-combobox";
+import { PbfNavTabs } from "@/components/pembelian/pbf-nav-tabs";
 import {
   Dialog,
   DialogContent,
@@ -97,6 +98,9 @@ export default function ReturPembelianPage() {
 
   return (
     <div className="space-y-6">
+      {/* Navigation Sub-Tabs */}
+      <PbfNavTabs />
+
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white p-4 rounded-xl border">
         <div>

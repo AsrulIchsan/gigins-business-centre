@@ -20,6 +20,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { InventoryNavTabs } from "@/components/inventory/inventory-nav-tabs";
 
 export default function KartuStokPage() {
   const [selectedProductId, setSelectedProductId] = useState<string>("prod-1");
@@ -135,6 +136,9 @@ export default function KartuStokPage() {
           Export Excel / PDF
         </Button>
       </div>
+
+      {/* Navigation Sub-Tabs */}
+      <InventoryNavTabs />
 
       {/* Select Product & Batch Overview Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">

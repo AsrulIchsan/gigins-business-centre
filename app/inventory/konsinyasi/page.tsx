@@ -17,6 +17,7 @@ import { formatRupiah, formatDateIndo } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { InventoryNavTabs } from "@/components/inventory/inventory-nav-tabs";
 
 export default function KonsinyasiPage() {
   const consignmentProducts = INITIAL_PRODUCTS.filter((p) => p.isConsignment);
@@ -49,6 +50,9 @@ export default function KonsinyasiPage() {
 
   return (
     <div className="space-y-6">
+      {/* Navigation Sub-Tabs */}
+      <InventoryNavTabs />
+
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white p-4 rounded-xl border">
         <div>
