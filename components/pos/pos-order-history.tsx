@@ -34,6 +34,7 @@ import {
   X,
 } from "lucide-react";
 import { formatRupiah, formatDateIndo } from "@/lib/utils";
+import { useAuth } from "@/lib/use-auth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -112,11 +113,13 @@ export default function PosOrderHistory({
   businessName = "Apotik Tamansari",
   businessAddress = "Jl. Tamansari No. 45, Bandung",
   businessPhone = "022-2501234",
-  currentCashier = "Siti Rahma, A.Md.Farm",
+  currentCashier: propCashier,
   onLoadOrderToPOS,
   onSwitchToCashier,
   initialChannelFilter = "ALL",
 }: PosOrderHistoryProps) {
+  const { user } = useAuth();
+  const currentCashier = propCashier || user?.name || "Kasir Utama";
   // State
   const [posSales, setPosSales] = useState<PosSaleRecord[]>([]);
   const [onlineOrders, setOnlineOrders] = useState<any[]>([]);

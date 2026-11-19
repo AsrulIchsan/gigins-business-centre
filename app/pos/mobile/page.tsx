@@ -4,6 +4,7 @@ import React, { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useBusinessStore } from "@/lib/business-store";
+import { useAuth } from "@/lib/use-auth";
 import {
   Camera,
   Barcode,
@@ -29,6 +30,7 @@ import { Badge } from "@/components/ui/badge";
 export default function MobilePosPage() {
   const pathname = usePathname();
   const { activeBusiness } = useBusinessStore();
+  const { user } = useAuth();
   const isDynamic = pathname?.startsWith("/b/");
   const isPharmacy = activeBusiness.type === "PHARMACY";
   const backHref = isDynamic ? `/b/${activeBusiness.slug}/dashboard` : "/";
@@ -86,6 +88,36 @@ export default function MobilePosPage() {
     }
   };
 
+  const handleMobileCheckout = async (paymentMethod: string) => {
+    try {
+      await fetch("/api/pos/checkout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          saleNumber: `SL-MOB-${Date.now().toString().slice(-6)}`,
+          businessId: activeBusiness?.id || "biz-apotik-tamansari",
+          items: cart.map((it) => ({
+            productId: it.product.id,
+            name: it.product.name,
+            unitName: it.unitName,
+            qty: it.qty,
+            sellPrice: it.price,
+            selectedBatchNumber: it.product.batches?.[0]?.batchNumber,
+          })),
+          subtotal: total,
+          totalAmount: total,
+          paymentMethod,
+          cashGiven: total,
+          change: 0,
+          userId: user?.id || "usr-mobile",
+          cashier: user?.name || "Kasir HP",
+          businessName: activeBusiness?.name || "Apotik Tamansari",
+        }),
+      });
+    } catch {}
+    setIsSuccessModal(true);
+  };
+
   return (
     <div className="max-w-md mx-auto min-h-[90vh] flex flex-col justify-between pb-20">
       {/* Mobile Header */}
@@ -96,8 +128,8 @@ export default function MobilePosPage() {
           </Link>
           <div className="text-center">
             <h1 className="font-bold text-sm">POS Kasir Mobile</h1>
-            <p className="text-[10px] text-white/80">
-              {isPharmacy ? "Mode Operasional HP & Scanner Kamera" : "Kasir HP Toko Mainan & Barcode Scanner"}
+            <p className="text-[10px] text-white/90">
+              Kasir: <b>{user?.name || "Kasir HP"}</b> &bull; {isPharmacy ? "Apotik" : "Toko Mainan"}
             </p>
           </div>
           <button
@@ -248,14 +280,14 @@ export default function MobilePosPage() {
 
           <div className="grid grid-cols-3 gap-2">
             <Button
-              onClick={() => setIsSuccessModal(true)}
+              onClick={() => handleMobileCheckout("CASH")}
               className="bg-emerald-600 hover:bg-emerald-700 font-bold text-xs h-11 flex items-center justify-center gap-1 col-span-2"
             >
               <Banknote className="h-4 w-4" />
               Bayar Tunai Pas
             </Button>
             <Button
-              onClick={() => setIsSuccessModal(true)}
+              onClick={() => handleMobileCheckout("QRIS")}
               variant="outline"
               className="border-emerald-600 text-emerald-700 font-bold text-xs h-11 flex items-center justify-center gap-1"
             >

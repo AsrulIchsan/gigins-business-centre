@@ -37,10 +37,28 @@ export async function POST(request: Request) {
       roundingAmount = 0,
       change = 0,
       isCredit = false,
-      userId = "user-kasir-siti",
-      cashier = "Siti Rahma, A.Md.Farm",
+      userId,
+      cashier,
       businessName = "Apotik Tamansari",
     } = body;
+
+    // Determine Cashier and User ID dynamically (priority: body > session cookie > fallback)
+    let finalCashier = cashier;
+    let finalUserId = userId;
+
+    if (!finalCashier) {
+      const cookieHeader = request.headers.get("cookie") || "";
+      const match = cookieHeader.match(/(?:^|;\s*)user_profile=([^;]*)/);
+      if (match && match[1]) {
+        try {
+          const parsed = JSON.parse(decodeURIComponent(match[1]));
+          if (parsed.name) finalCashier = parsed.name;
+          if (parsed.id) finalUserId = parsed.id;
+        } catch {}
+      }
+    }
+    finalCashier = finalCashier || "Kasir Utama";
+    finalUserId = finalUserId || "usr-kasir";
 
     // Validate items
     if (!items || items.length === 0) {
@@ -83,7 +101,7 @@ export async function POST(request: Request) {
 
     // Audit trail logging with payment details
     await activityLogger.sale
-      .created(userId, businessId, saleNumber, saleNumber, finalTotal, {
+      .created(finalUserId, businessId, saleNumber, saleNumber, finalTotal, {
         paymentMethod,
         paymentNote: paymentNote || (paymentMethod === "CASH" ? "Tunai (Cash)" : paymentMethod === "QRIS" ? "QRIS Dinamis" : paymentMethod === "TF" ? "Transfer Bank" : paymentMethod),
         cashGiven: cashGiven !== undefined ? cashGiven : finalTotal,
@@ -119,7 +137,7 @@ export async function POST(request: Request) {
       cashGiven: cashGiven !== undefined ? cashGiven : finalTotal,
       roundingAmount,
       change,
-      cashier,
+      cashier: finalCashier,
       businessName,
       businessAddress: "Jl. Tamansari No. 45, Bandung",
       businessPhone: "022-2501234",

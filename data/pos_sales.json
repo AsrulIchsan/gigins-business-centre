@@ -41,7 +41,7 @@
     "cashGiven": 50000,
     "roundingAmount": 50,
     "change": 30000,
-    "cashier": "Siti Rahma, A.Md.Farm",
+    "cashier": "Gigin",
     "businessName": "Apotik Tamansari",
     "businessAddress": "Jl. Tamansari No. 45, Bandung",
     "businessPhone": "022-2501234",
@@ -140,7 +140,7 @@
     "cashGiven": 50000,
     "roundingAmount": 0,
     "change": 3000,
-    "cashier": "Siti Rahma, A.Md.Farm",
+    "cashier": "Gigin",
     "businessName": "Apotik Tamansari",
     "businessAddress": "Jl. Tamansari No. 45, Bandung",
     "businessPhone": "022-2501234",
@@ -181,7 +181,7 @@
     "embalaseFee": 2500,
     "discountAmount": 0,
     "totalAmount": 25000,
-    "paymentMethod": "DEBIT_CARD",
+    "paymentMethod": "DEBIT",
     "paymentNote": "Kartu Debit Mandiri",
     "cashGiven": 25000,
     "roundingAmount": 0,
@@ -192,5 +192,234 @@
     "businessPhone": "022-2501234",
     "status": "COMPLETED",
     "createdAt": "2026-11-18T23:25:00.000Z"
+  },
+  {
+    "id": "sale-ts-005",
+    "saleNumber": "SL-TS-884890",
+    "date": "2026-11-18T08:15:00.000Z",
+    "saleType": "GENERAL",
+    "items": [
+      {
+        "productId": "prod-1",
+        "name": "Sanmol 500mg (Paracetamol)",
+        "unitName": "Strip",
+        "qty": 4,
+        "sellPrice": 5000,
+        "subtotal": 20000,
+        "batchNumber": "BCH-SNM-24A"
+      },
+      {
+        "productId": "prod-5",
+        "name": "Vitamin C 500mg IPI",
+        "unitName": "Pot",
+        "qty": 2,
+        "sellPrice": 9500,
+        "subtotal": 19000,
+        "batchNumber": "VTC-2024-01"
+      }
+    ],
+    "customer": {
+      "id": "c-1",
+      "name": "Budi Santoso",
+      "phone": "081234567890",
+      "tier": "GOLD",
+      "memberCode": "MBR-001"
+    },
+    "subtotal": 39000,
+    "compoundingFee": 0,
+    "embalaseFee": 0,
+    "discountAmount": 1950,
+    "totalAmount": 37050,
+    "paymentMethod": "CASH",
+    "paymentNote": "Tunai (Cash)",
+    "cashGiven": 40000,
+    "roundingAmount": 0,
+    "change": 2950,
+    "cashier": "Gigin",
+    "businessName": "Apotik Tamansari",
+    "businessAddress": "Jl. Tamansari No. 45, Bandung",
+    "businessPhone": "022-2501234",
+    "status": "COMPLETED",
+    "createdAt": "2026-11-18T08:15:00.000Z"
+  },
+  {
+    "id": "sale-ts-006",
+    "saleNumber": "SL-TS-884875",
+    "date": "2026-11-16T14:20:00.000Z",
+    "saleType": "PRESCRIPTION",
+    "prescriptionNumber": "R/2026/11/038",
+    "doctor": {
+      "id": "doc-1",
+      "name": "dr. Hendra Gunawan, Sp.PD",
+      "clinic": "Klinik Sehat Tamansari",
+      "sip": "503/445/SIP-Dokter/2022"
+    },
+    "items": [
+      {
+        "productId": "prod-2",
+        "name": "Amoxicillin 500mg Hexpharm",
+        "unitName": "Strip",
+        "qty": 3,
+        "sellPrice": 8000,
+        "subtotal": 24000,
+        "batchNumber": "AMX-2024-H2"
+      },
+      {
+        "productId": "prod-3",
+        "name": "Cetirizine 10mg Novell",
+        "unitName": "Strip",
+        "qty": 2,
+        "sellPrice": 11000,
+        "subtotal": 22000,
+        "batchNumber": "CTZ-24-X1"
+      }
+    ],
+    "customer": null,
+    "subtotal": 46000,
+    "compoundingFee": 0,
+    "embalaseFee": 0,
+    "discountAmount": 0,
+    "totalAmount": 46000,
+    "paymentMethod": "TF",
+    "paymentNote": "Transfer BCA",
+    "cashGiven": 46000,
+    "roundingAmount": 0,
+    "change": 0,
+    "cashier": "Siti Rahma, A.Md.Farm",
+    "businessName": "Apotik Tamansari",
+    "businessAddress": "Jl. Tamansari No. 45, Bandung",
+    "businessPhone": "022-2501234",
+    "status": "COMPLETED",
+    "createdAt": "2026-11-16T14:20:00.000Z"
+  },
+  {
+    "id": "sale-ts-007",
+    "saleNumber": "SL-TS-884850",
+    "date": "2026-11-14T10:10:00.000Z",
+    "saleType": "GENERAL",
+    "items": [
+      {
+        "productId": "prod-7",
+        "name": "Madu Herbal TJ Murni 150g",
+        "unitName": "Botol",
+        "qty": 2,
+        "sellPrice": 25000,
+        "subtotal": 50000,
+        "batchNumber": "TJ-2024-09"
+      }
+    ],
+    "customer": {
+      "id": "c-2",
+      "name": "Ibu Ratna Dewi",
+      "phone": "081987654321",
+      "tier": "SILVER",
+      "memberCode": "MBR-002"
+    },
+    "subtotal": 50000,
+    "compoundingFee": 0,
+    "embalaseFee": 0,
+    "discountAmount": 1500,
+    "totalAmount": 48500,
+    "paymentMethod": "QRIS",
+    "paymentNote": "QRIS Dinamis BCA",
+    "cashGiven": 48500,
+    "roundingAmount": 0,
+    "change": 0,
+    "cashier": "Gigin",
+    "businessName": "Apotik Tamansari",
+    "businessAddress": "Jl. Tamansari No. 45, Bandung",
+    "businessPhone": "022-2501234",
+    "status": "COMPLETED",
+    "createdAt": "2026-11-14T10:10:00.000Z"
+  },
+  {
+    "id": "sale-ts-008",
+    "saleNumber": "SL-TS-884812",
+    "date": "2026-11-09T16:45:00.000Z",
+    "saleType": "GENERAL",
+    "items": [
+      {
+        "productId": "prod-6",
+        "name": "Minyak Kayu Putih Cap Lang 60ml",
+        "unitName": "Botol",
+        "qty": 2,
+        "sellPrice": 22000,
+        "subtotal": 44000,
+        "batchNumber": "MKP-2024-05"
+      }
+    ],
+    "customer": null,
+    "subtotal": 44000,
+    "compoundingFee": 0,
+    "embalaseFee": 0,
+    "discountAmount": 0,
+    "totalAmount": 44000,
+    "paymentMethod": "CASH",
+    "paymentNote": "Tunai (Cash)",
+    "cashGiven": 50000,
+    "roundingAmount": 0,
+    "change": 6000,
+    "cashier": "Siti Rahma, A.Md.Farm",
+    "businessName": "Apotik Tamansari",
+    "businessAddress": "Jl. Tamansari No. 45, Bandung",
+    "businessPhone": "022-2501234",
+    "status": "COMPLETED",
+    "createdAt": "2026-11-09T16:45:00.000Z"
+  },
+  {
+    "id": "sale-ts-009",
+    "saleNumber": "SL-TS-884760",
+    "date": "2026-11-03T11:25:00.000Z",
+    "saleType": "PRESCRIPTION",
+    "prescriptionNumber": "R/2026/11/012",
+    "doctor": {
+      "id": "doc-1",
+      "name": "dr. Hendra Gunawan, Sp.PD",
+      "clinic": "Klinik Sehat Tamansari",
+      "sip": "503/445/SIP-Dokter/2022"
+    },
+    "items": [
+      {
+        "productId": "prod-1",
+        "name": "Sanmol 500mg (Paracetamol)",
+        "unitName": "Strip",
+        "qty": 3,
+        "sellPrice": 5000,
+        "subtotal": 15000,
+        "batchNumber": "BCH-SNM-24A"
+      },
+      {
+        "productId": "prod-2",
+        "name": "Amoxicillin 500mg Hexpharm",
+        "unitName": "Strip",
+        "qty": 2,
+        "sellPrice": 8000,
+        "subtotal": 16000,
+        "batchNumber": "AMX-2024-H2"
+      }
+    ],
+    "customer": {
+      "id": "c-1",
+      "name": "Budi Santoso",
+      "phone": "081234567890",
+      "tier": "GOLD",
+      "memberCode": "MBR-001"
+    },
+    "subtotal": 31000,
+    "compoundingFee": 0,
+    "embalaseFee": 0,
+    "discountAmount": 1550,
+    "totalAmount": 29450,
+    "paymentMethod": "CASH",
+    "paymentNote": "Tunai (Cash)",
+    "cashGiven": 50000,
+    "roundingAmount": 50,
+    "change": 20500,
+    "cashier": "Gigin",
+    "businessName": "Apotik Tamansari",
+    "businessAddress": "Jl. Tamansari No. 45, Bandung",
+    "businessPhone": "022-2501234",
+    "status": "COMPLETED",
+    "createdAt": "2026-11-03T11:25:00.000Z"
   }
 ]

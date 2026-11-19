@@ -17,7 +17,7 @@ export function BottomNav() {
     { title: "POS Kasir", href: "/pos/mobile", icon: ShoppingCart, highlight: true },
     { title: "Opname HP", href: "/inventory/opname", icon: Boxes },
     { title: isPharmacy ? "Faktur PBF" : "Faktur Masuk", href: "/pembelian/mobile", icon: Truck },
-    { title: "Kas Kasir", href: "/laporan/shift", icon: BarChart3 },
+    { title: "Laporan", href: "/laporan", icon: BarChart3 },
   ];
 
   return (

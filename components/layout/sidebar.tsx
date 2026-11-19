@@ -96,11 +96,7 @@ export function Sidebar() {
         {
           title: "LAPORAN & AKUNTANSI",
           items: [
-            { title: "Laporan Kas & Omset Kasir", href: "/laporan/shift", icon: BarChart3 },
-            { title: "Peringatan Expired & Habis", href: "/laporan/stok-alert", icon: Pill, badge: "Penting" },
-            { title: "Smart Forecasting & Harga", href: "/laporan/analitik", icon: BarChart3 },
-            { title: "Akuntansi & Jurnal Umum", href: "/akuntansi/jurnal", icon: BookOpenCheck },
-            { title: "Laba Rugi & Neraca", href: "/akuntansi/laporan", icon: BookOpenCheck },
+            { title: "Laporan & Akuntansi", href: "/laporan", icon: BarChart3 },
           ],
         },
         {
@@ -146,13 +142,9 @@ export function Sidebar() {
           ],
         },
         {
-          title: "KEUANGAN & AKUNTANSI",
+          title: "LAPORAN & AKUNTANSI",
           items: [
-            { title: "Laporan Kas Kasir", href: "/laporan/shift", icon: BarChart3 },
-            { title: "Peringatan Stok Menipis", href: "/laporan/stok-alert", icon: PackageCheck, badge: "Alert" },
-            { title: "Analisis Margin & Best-Seller", href: "/laporan/analitik", icon: BarChart3 },
-            { title: "Jurnal Pembukuan", href: "/akuntansi/jurnal", icon: BookOpenCheck },
-            { title: "Laba Rugi & Neraca", href: "/akuntansi/laporan", icon: BookOpenCheck },
+            { title: "Laporan & Akuntansi", href: "/laporan", icon: BarChart3 },
           ],
         },
         {
@@ -253,6 +245,7 @@ export function Sidebar() {
                   isDynamicRoute ? pathname === targetPathOnly : pathname === item.href
                 );
                 const isSectionActive =
+                  (item.href === "/laporan" && (cleanPath?.startsWith("/laporan") || cleanPath?.startsWith("/akuntansi"))) ||
                   (item.href === "/inventory/kartu-stok" && cleanPath?.startsWith("/inventory/")) ||
                   (item.href === "/master/obat" && cleanPath?.startsWith("/master/")) ||
                   (item.href === "/pembelian/faktur" && (cleanPath?.startsWith("/pembelian/faktur") || cleanPath?.startsWith("/pembelian/mobile") || cleanPath?.startsWith("/pembelian/retur"))) ||

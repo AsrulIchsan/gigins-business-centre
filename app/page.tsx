@@ -31,10 +31,13 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { useBusinessStore } from "@/lib/business-store";
+import { useAuth } from "@/lib/use-auth";
 
 export default function DashboardPage() {
   const pathname = usePathname();
   const { activeBusiness, platformName } = useBusinessStore();
+  const { user } = useAuth();
+  const activeCashierName = user?.name || ACTIVE_SHIFT.cashierName;
   const bHref = (path: string) =>
     pathname?.startsWith("/b/") ? `/b/${activeBusiness.slug}${path}` : path;
   const isPharmacy = activeBusiness.type === "PHARMACY";
@@ -88,8 +91,8 @@ export default function DashboardPage() {
               />
               <span className="font-semibold tracking-wide">
                 {isPharmacy
-                  ? `Shift Aktif: ${ACTIVE_SHIFT.shiftNumber} (${ACTIVE_SHIFT.cashierName})`
-                  : `Shift Aktif: SHIFT-TOY-01 (Kasir Toko Pasar Lelea)`}
+                  ? `Shift Aktif: ${ACTIVE_SHIFT.shiftNumber} (${activeCashierName})`
+                  : `Shift Aktif: SHIFT-TOY-01 (${activeCashierName})`}
               </span>
               <span className="hidden sm:inline-block opacity-75">|</span>
               <span className="hidden sm:inline-block font-mono text-[11px] opacity-90">

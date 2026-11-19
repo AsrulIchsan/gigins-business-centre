@@ -165,7 +165,7 @@ export async function POST(request: NextRequest) {
       cashGiven: Number(body.cashGiven || body.totalAmount || 0),
       roundingAmount: Number(body.roundingAmount || 0),
       change: Number(body.change || 0),
-      cashier: body.cashier || "Siti Rahma, A.Md.Farm",
+      cashier: body.cashier || "Kasir Utama",
       businessName: body.businessName || "Apotik Tamansari",
       businessAddress: body.businessAddress || "Jl. Tamansari No. 45, Bandung",
       businessPhone: body.businessPhone || "022-2501234",
