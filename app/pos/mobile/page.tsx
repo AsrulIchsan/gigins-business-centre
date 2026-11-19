@@ -20,8 +20,9 @@ import {
   CreditCard,
   Banknote,
   QrCode,
+  ChevronDown,
 } from "lucide-react";
-import { INITIAL_PRODUCTS, MockProduct } from "@/lib/mock-data";
+import { INITIAL_PRODUCTS, MockProduct, getUnitsForProduct, ResolvedProductUnit } from "@/lib/mock-data";
 import { formatRupiah } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -48,9 +49,12 @@ export default function MobilePosPage() {
       p.barcode.includes(search)
   );
 
-  const addItem = (product: MockProduct) => {
-    const defaultUnit = product.units[0];
-    const existing = cart.findIndex((i) => i.product.id === product.id);
+  const addItem = (product: MockProduct, unitInput?: ResolvedProductUnit) => {
+    const available = getUnitsForProduct(product);
+    const selectedUnit = unitInput || available[0];
+    const existing = cart.findIndex(
+      (i) => i.product.id === product.id && i.unitName.toLowerCase() === selectedUnit.unitName.toLowerCase()
+    );
     if (existing > -1) {
       const updated = [...cart];
       updated[existing].qty += 1;
@@ -58,8 +62,41 @@ export default function MobilePosPage() {
     } else {
       setCart([
         ...cart,
-        { product, qty: 1, unitName: defaultUnit.unitName, price: defaultUnit.sellPrice },
+        { product, qty: 1, unitName: selectedUnit.unitName, price: selectedUnit.sellPrice },
       ]);
+    }
+  };
+
+  const handleUnitChange = (index: number, newUnitName: string) => {
+    const current = cart[index];
+    if (!current || current.unitName.toLowerCase() === newUnitName.toLowerCase()) return;
+
+    const availableUnits = getUnitsForProduct(current.product, current.unitName);
+    const target =
+      availableUnits.find((u) => u.unitName.toLowerCase() === newUnitName.toLowerCase()) ||
+      availableUnits.find((u) => u.unitName === newUnitName);
+
+    if (!target) return;
+
+    const existingIndex = cart.findIndex(
+      (it, idx) =>
+        idx !== index &&
+        it.product.id === current.product.id &&
+        it.unitName.toLowerCase() === target.unitName.toLowerCase()
+    );
+
+    if (existingIndex > -1) {
+      const updated = [...cart];
+      updated[existingIndex].qty += current.qty;
+      setCart(updated.filter((_, idx) => idx !== index));
+    } else {
+      const updated = [...cart];
+      updated[index] = {
+        ...current,
+        unitName: target.unitName,
+        price: target.sellPrice,
+      };
+      setCart(updated);
     }
   };
 
@@ -209,33 +246,59 @@ export default function MobilePosPage() {
             </div>
 
             <div className="divide-y max-h-56 overflow-y-auto">
-              {cart.map((item, idx) => (
-                <div key={idx} className="py-2 flex items-center justify-between text-xs">
-                  <div className="flex-1 pr-2">
-                    <p className="font-semibold text-slate-800 leading-tight">{item.product.name}</p>
-                    <p className="text-[10px] text-slate-500">
-                      {formatRupiah(item.price)} / {item.unitName}
-                    </p>
-                  </div>
+              {cart.map((item, idx) => {
+                const availableUnits = getUnitsForProduct(item.product, item.unitName);
+                return (
+                  <div key={idx} className="py-2 flex items-center justify-between text-xs">
+                    <div className="flex-1 pr-2">
+                      <p className="font-semibold text-slate-800 leading-tight">{item.product.name}</p>
+                      <div className="flex items-center gap-1.5 mt-1">
+                        {availableUnits.length > 1 ? (
+                          <div className="relative inline-flex items-center">
+                            <select
+                              value={item.unitName}
+                              onChange={(e) => handleUnitChange(idx, e.target.value)}
+                              aria-label={`Ubah satuan ${item.product.name}`}
+                              className="appearance-none bg-emerald-50 text-emerald-800 border border-emerald-300 font-bold text-[10px] rounded px-1.5 py-0.5 pr-4 focus:outline-none"
+                            >
+                              {availableUnits.map((u) => (
+                                <option key={u.unitName} value={u.unitName}>
+                                  {u.unitName} ({formatRupiah(u.sellPrice)})
+                                </option>
+                              ))}
+                            </select>
+                            <ChevronDown className="h-2.5 w-2.5 text-emerald-700 pointer-events-none absolute right-1" />
+                          </div>
+                        ) : (
+                          <span className="text-[10px] font-bold text-slate-600 bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200">
+                            {item.unitName}
+                          </span>
+                        )}
+                        <span className="text-[10px] text-slate-600 font-medium">
+                          {formatRupiah(item.price)}
+                        </span>
+                      </div>
+                    </div>
 
-                  {/* Quantity Stepper */}
-                  <div className="flex items-center gap-2">
-                    <button
-                      onClick={() => updateQty(idx, -1)}
-                      className="w-7 h-7 bg-slate-100 rounded-full flex items-center justify-center font-bold text-slate-700 active:bg-slate-200"
-                    >
-                      <Minus className="h-3 w-3" />
-                    </button>
-                    <span className="font-bold text-sm w-5 text-center">{item.qty}</span>
-                    <button
-                      onClick={() => updateQty(idx, 1)}
-                      className="w-7 h-7 bg-emerald-600 text-white rounded-full flex items-center justify-center font-bold active:bg-emerald-700"
-                    >
-                      <Plus className="h-3 w-3" />
-                    </button>
+                    {/* Quantity Stepper */}
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => updateQty(idx, -1)}
+                        className="w-7 h-7 bg-slate-100 rounded-full flex items-center justify-center font-bold text-slate-700 active:bg-slate-200"
+                      >
+                        <Minus className="h-3 w-3" />
+                      </button>
+                      <span className="font-bold text-sm w-5 text-center">{item.qty}</span>
+                      <button
+                        onClick={() => updateQty(idx, 1)}
+                        className="w-7 h-7 bg-emerald-600 text-white rounded-full flex items-center justify-center font-bold active:bg-emerald-700"
+                      >
+                        <Plus className="h-3 w-3" />
+                      </button>
+                    </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         )}

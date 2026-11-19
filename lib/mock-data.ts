@@ -309,3 +309,242 @@ export const MOCK_ONLINE_ORDERS = [
     time: "1 jam lalu",
   },
 ];
+
+export interface ResolvedProductUnit {
+  id: string;
+  unitName: string;
+  conversionFactor: number;
+  isBaseUnit: boolean;
+  buyPrice: number;
+  sellPrice: number;
+}
+
+/**
+ * Mendapatkan daftar satuan yang valid untuk produk obat di POS.
+ * Menyesuaikan bentuk sediaan obat:
+ * - Obat non-liquid (padat: tablet, kapsul, kaplet, pil): menyediakan Tablet, Strip, dan Box
+ *   dengan harga & faktor konversi berjenjang (1 Strip = 10 tablet/kapsul, 1 Box = 10 strip / 100 tablet/kapsul).
+ * - Obat liquid (cair: botol, sirup, suspensi, drop, larutan): hanya menampilkan satuan yang sesuai
+ *   (misal: Botol / Fls), TIDAK menampilkan opsi tablet atau strip.
+ * - Obat semi-solid / bahan baku (tube, salep, krim, gram): hanya menampilkan satuan yang sesuai.
+ */
+export function getUnitsForProduct(
+  product: MockProduct | undefined | null,
+  currentUnitName?: string
+): ResolvedProductUnit[] {
+  if (!product) {
+    const cur = currentUnitName || "Pcs";
+    const curLower = cur.toLowerCase();
+    const isSolid = ["tablet", "tab", "kapsul", "kaplet", "strip", "box", "dus", "pil"].some((s) => curLower.includes(s));
+    if (isSolid) {
+      return [
+        { id: "u-tab", unitName: "Tablet", conversionFactor: 1, isBaseUnit: true, buyPrice: 500, sellPrice: 1000 },
+        { id: "u-str", unitName: "Strip", conversionFactor: 10, isBaseUnit: false, buyPrice: 5000, sellPrice: 10000 },
+        { id: "u-box", unitName: "Box", conversionFactor: 100, isBaseUnit: false, buyPrice: 50000, sellPrice: 95000 },
+      ];
+    }
+    return [{ id: "u-fallback", unitName: cur, conversionFactor: 1, isBaseUnit: true, buyPrice: 0, sellPrice: 0 }];
+  }
+
+  const existingUnits = product.units || [];
+  const baseUnitObj = existingUnits.find((u) => u.isBaseUnit) || existingUnits[0];
+  const baseUnitName = product.baseUnit || (baseUnitObj ? baseUnitObj.unitName : "Pcs");
+  const basePrice = baseUnitObj ? baseUnitObj.sellPrice : 1000;
+  const baseBuyPrice = baseUnitObj ? baseUnitObj.buyPrice : 800;
+
+  const baseLower = baseUnitName.toLowerCase();
+  const nameLower = (product.name || "").toLowerCase();
+  const catLower = (product.category || "").toLowerCase();
+
+  // 1. Deteksi obat cair / liquid (Sirup, Suspensi, Drop, Larutan, Infus, Vial, Ampul, Botol, Fls)
+  const isLiquid =
+    baseLower.includes("botol") ||
+    baseLower.includes("btl") ||
+    baseLower.includes("sirup") ||
+    baseLower.includes("syrup") ||
+    baseLower.includes("fls") ||
+    baseLower.includes("drop") ||
+    baseLower.includes("susp") ||
+    baseLower.includes("larutan") ||
+    baseLower.includes("elixir") ||
+    baseLower.includes("vial") ||
+    baseLower.includes("ampul") ||
+    baseLower.includes("infus") ||
+    baseLower.includes("cair") ||
+    baseLower.includes("ml") ||
+    baseLower.includes("liter") ||
+    nameLower.includes("sirup") ||
+    nameLower.includes("syrup") ||
+    nameLower.includes("drop") ||
+    nameLower.includes("suspensi") ||
+    nameLower.includes("larutan") ||
+    catLower.includes("sirup") ||
+    catLower.includes("cair");
+
+  // 2. Deteksi semi-solid atau bahan racikan murni (Salep, Krim, Gel, Gram)
+  const isSemiSolidOrRaw =
+    baseLower.includes("gram") ||
+    baseLower.includes("tube") ||
+    baseLower.includes("pot") ||
+    baseLower.includes("salep") ||
+    baseLower.includes("krim") ||
+    baseLower.includes("gel");
+
+  // Jika liquid atau semi-solid/raw, hanya gunakan satuan yang telah terdaftar pada produk (jangan tampilkan tablet/strip)
+  if (isLiquid || isSemiSolidOrRaw) {
+    if (existingUnits.length > 0) {
+      return existingUnits.map((u) => ({
+        id: u.id,
+        unitName: u.unitName,
+        conversionFactor: u.conversionFactor || 1,
+        isBaseUnit: !!u.isBaseUnit,
+        buyPrice: u.buyPrice || 0,
+        sellPrice: u.sellPrice || 0,
+      }));
+    }
+    return [
+      {
+        id: `u-${product.id}`,
+        unitName: baseUnitName,
+        conversionFactor: 1,
+        isBaseUnit: true,
+        buyPrice: baseBuyPrice,
+        sellPrice: basePrice,
+      },
+    ];
+  }
+
+  // 3. Deteksi non-liquid / obat sediaan padat (Tablet, Kapsul, Kaplet, Pil, dsb.)
+  const isSolidMedicine =
+    baseLower.includes("tablet") ||
+    baseLower.includes("tab") ||
+    baseLower.includes("kapsul") ||
+    baseLower.includes("kaplet") ||
+    baseLower.includes("pil") ||
+    baseLower.includes("cap") ||
+    existingUnits.some((u) => {
+      const un = u.unitName.toLowerCase();
+      return un.includes("tablet") || un.includes("strip") || un.includes("kapsul") || un.includes("kaplet");
+    });
+
+  if (isSolidMedicine) {
+    const result: ResolvedProductUnit[] = [];
+    const baseLabel =
+      baseLower.includes("kapsul")
+        ? "Kapsul"
+        : baseLower.includes("kaplet")
+        ? "Kaplet"
+        : baseLower.includes("pil")
+        ? "Pil"
+        : "Tablet";
+
+    // 3a. Satuan Dasar (Tablet / Kapsul / Kaplet / Pil)
+    const existingBase =
+      existingUnits.find((u) => u.unitName.toLowerCase() === baseLabel.toLowerCase()) ||
+      existingUnits.find((u) => u.isBaseUnit) ||
+      existingUnits[0];
+
+    result.push({
+      id: existingBase?.id || `u-base-${product.id}`,
+      unitName: existingBase?.unitName || baseLabel,
+      conversionFactor: existingBase?.conversionFactor || 1,
+      isBaseUnit: true,
+      buyPrice: existingBase?.buyPrice || baseBuyPrice,
+      sellPrice: existingBase?.sellPrice || basePrice,
+    });
+
+    // 3b. Satuan Strip
+    const existingStrip = existingUnits.find(
+      (u) => u.unitName.toLowerCase().includes("strip") || u.unitName.toLowerCase().includes("blister")
+    );
+    if (existingStrip) {
+      result.push({
+        id: existingStrip.id,
+        unitName: existingStrip.unitName,
+        conversionFactor: existingStrip.conversionFactor || 10,
+        isBaseUnit: false,
+        buyPrice: existingStrip.buyPrice,
+        sellPrice: existingStrip.sellPrice,
+      });
+    } else {
+      const conv = 10;
+      result.push({
+        id: `u-strip-${product.id}`,
+        unitName: "Strip",
+        conversionFactor: conv,
+        isBaseUnit: false,
+        buyPrice: baseBuyPrice * conv,
+        sellPrice: basePrice * conv,
+      });
+    }
+
+    // 3c. Satuan Box (10 Strip = 100 Tablet/Kapsul)
+    const existingBox = existingUnits.find(
+      (u) => u.unitName.toLowerCase().includes("box") || u.unitName.toLowerCase().includes("dus")
+    );
+    if (existingBox) {
+      result.push({
+        id: existingBox.id,
+        unitName: existingBox.unitName,
+        conversionFactor: existingBox.conversionFactor || 100,
+        isBaseUnit: false,
+        buyPrice: existingBox.buyPrice,
+        sellPrice: existingBox.sellPrice,
+      });
+    } else {
+      const stripUnit = result.find((u) => u.unitName.toLowerCase().includes("strip"));
+      const stripConv = stripUnit ? stripUnit.conversionFactor : 10;
+      const stripSell = stripUnit ? stripUnit.sellPrice : basePrice * 10;
+      const stripBuy = stripUnit ? stripUnit.buyPrice : baseBuyPrice * 10;
+      const boxConv = stripConv * 10;
+      result.push({
+        id: `u-box-${product.id}`,
+        unitName: "Box",
+        conversionFactor: boxConv,
+        isBaseUnit: false,
+        buyPrice: stripBuy * 10,
+        sellPrice: stripSell * 10,
+      });
+    }
+
+    // 3d. Masukkan satuan lain yang mungkin sudah didefinisikan secara khusus pada master obat
+    for (const u of existingUnits) {
+      if (!result.some((r) => r.unitName.toLowerCase() === u.unitName.toLowerCase())) {
+        result.push({
+          id: u.id,
+          unitName: u.unitName,
+          conversionFactor: u.conversionFactor || 1,
+          isBaseUnit: !!u.isBaseUnit,
+          buyPrice: u.buyPrice,
+          sellPrice: u.sellPrice,
+        });
+      }
+    }
+
+    return result;
+  }
+
+  // 4. Fallback untuk kategori produk lain (misal: Alkes, Perlengkapan, Retail)
+  if (existingUnits.length > 0) {
+    return existingUnits.map((u) => ({
+      id: u.id,
+      unitName: u.unitName,
+      conversionFactor: u.conversionFactor || 1,
+      isBaseUnit: !!u.isBaseUnit,
+      buyPrice: u.buyPrice || 0,
+      sellPrice: u.sellPrice || 0,
+    }));
+  }
+
+  return [
+    {
+      id: `u-def-${product.id}`,
+      unitName: baseUnitName || "Pcs",
+      conversionFactor: 1,
+      isBaseUnit: true,
+      buyPrice: baseBuyPrice,
+      sellPrice: basePrice,
+    },
+  ];
+}
+

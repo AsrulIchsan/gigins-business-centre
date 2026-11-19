@@ -37,6 +37,7 @@ import {
   Volume2,
   Eye,
   X,
+  ChevronDown,
 } from "lucide-react";
 import { useBusinessStore } from "@/lib/business-store";
 import { useAuth } from "@/lib/use-auth";
@@ -48,6 +49,8 @@ import {
   MockProductUnit,
   MockCustomer,
   MockBatch,
+  getUnitsForProduct,
+  ResolvedProductUnit,
 } from "@/lib/mock-data";
 import { formatRupiah, calculateSellPrice } from "@/lib/utils";
 import { printThermalReceipt, ThermalPaperWidth } from "@/lib/thermal-printer";
@@ -655,14 +658,24 @@ export default function PosPage() {
     );
   };
 
-  // Add item to cart with FIFO batch assignment
-  const addToCart = (product: MockProduct, unitIndex = 0) => {
-    const selectedUnit = product.units[unitIndex] || product.units[0];
+  // Add item to cart with FIFO batch assignment & flexible multi-unit resolution
+  const addToCart = (
+    product: MockProduct,
+    unitInput: number | MockProductUnit | ResolvedProductUnit = 0
+  ) => {
+    const availableUnits = getUnitsForProduct(product);
+    let selectedUnit: MockProductUnit | ResolvedProductUnit;
+    if (typeof unitInput === "number") {
+      selectedUnit = availableUnits[unitInput] || availableUnits[0];
+    } else {
+      selectedUnit = unitInput || availableUnits[0];
+    }
+
     // Earliest expiring batch according to FIFO
     const fifoBatch = product.batches[0];
 
     const existingIndex = cart.findIndex(
-      (item) => item.productId === product.id && item.unitName === selectedUnit.unitName
+      (item) => item.productId === product.id && item.unitName.toLowerCase() === selectedUnit.unitName.toLowerCase()
     );
 
     if (existingIndex > -1) {
@@ -686,6 +699,51 @@ export default function PosPage() {
           isCompounding: saleType === "COMPOUNDING",
         },
       ]);
+    }
+  };
+
+  // Ubah satuan obat langsung pada rincian keranjang POS (Tablet, Strip, Box, dsb.)
+  const handleUnitChange = (itemIndex: number, newUnitName: string) => {
+    const currentItem = cart[itemIndex];
+    if (!currentItem || currentItem.unitName.toLowerCase() === newUnitName.toLowerCase()) return;
+
+    const product = productList.find((p) => p.id === currentItem.productId);
+    const availableUnits = getUnitsForProduct(product, currentItem.unitName);
+    const targetUnit =
+      availableUnits.find((u) => u.unitName.toLowerCase() === newUnitName.toLowerCase()) ||
+      availableUnits.find((u) => u.unitName === newUnitName);
+
+    if (!targetUnit) return;
+
+    const newSellPrice = targetUnit.sellPrice;
+    const newConversion = targetUnit.conversionFactor;
+
+    // Cek jika sudah ada baris lain dalam keranjang dengan obat dan satuan yang sama
+    const existingSameUnitIndex = cart.findIndex(
+      (it, idx) =>
+        idx !== itemIndex &&
+        it.productId === currentItem.productId &&
+        it.unitName.toLowerCase() === targetUnit.unitName.toLowerCase()
+    );
+
+    if (existingSameUnitIndex > -1) {
+      // Gabungkan qty ke baris yang sudah ada
+      const updated = [...cart];
+      updated[existingSameUnitIndex].qty += currentItem.qty;
+      updated[existingSameUnitIndex].subtotal = updated[existingSameUnitIndex].qty * newSellPrice;
+      // Hapus baris lama
+      setCart(updated.filter((_, idx) => idx !== itemIndex));
+    } else {
+      // Update baris saat ini dengan satuan dan harga baru
+      const updated = [...cart];
+      updated[itemIndex] = {
+        ...currentItem,
+        unitName: targetUnit.unitName,
+        conversionFactor: newConversion,
+        sellPrice: newSellPrice,
+        subtotal: currentItem.qty * newSellPrice,
+      };
+      setCart(updated);
     }
   };
 
@@ -1274,11 +1332,11 @@ export default function PosPage() {
 
                       {/* Tombol Satuan yang langsung klik ke keranjang di sebelah kanan */}
                       <div className="mt-1 pt-1 border-t border-slate-200/80 flex flex-wrap gap-1">
-                        {product.units.map((unit, uIdx) => (
+                        {getUnitsForProduct(product).map((unit, uIdx) => (
                           <button
-                            key={unit.id}
+                            key={unit.id || uIdx}
                             type="button"
-                            onClick={() => addToCart(product, uIdx)}
+                            onClick={() => addToCart(product, unit)}
                             className="flex-1 py-0.5 px-1 rounded bg-white hover:bg-emerald-600 hover:text-white border border-slate-200 text-slate-700 text-[9px] font-semibold transition-colors flex justify-between items-center shadow-2xs"
                           >
                             <span className="truncate">{unit.unitName}</span>
@@ -1392,7 +1450,46 @@ export default function PosPage() {
                               <span>Exp:{item.expiredDate?.slice(0, 10)}</span>
                             </div>
                           </td>
-                          <td className="py-1 px-1.5 text-center font-medium text-slate-600 font-sans text-[11px]">{item.unitName}</td>
+                          <td className="py-1 px-1 text-center">
+                            {(() => {
+                              const product = productList.find((p) => p.id === item.productId);
+                              const availableUnits = getUnitsForProduct(product, item.unitName);
+
+                              if (availableUnits.length > 1) {
+                                return (
+                                  <div className="inline-flex flex-col items-center">
+                                    <div className="relative inline-flex items-center">
+                                      <select
+                                        value={item.unitName}
+                                        onChange={(e) => handleUnitChange(idx, e.target.value)}
+                                        aria-label={`Ubah satuan ${item.name}`}
+                                        className="appearance-none bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300 hover:border-emerald-400 font-bold text-[10px] rounded px-1.5 py-0.5 pr-4 cursor-pointer focus:outline-none focus:ring-1 focus:ring-emerald-500 font-sans transition-all text-center shadow-2xs"
+                                        title="Ubah satuan obat (Tablet, Strip, Box, dll)"
+                                      >
+                                        {availableUnits.map((u) => (
+                                          <option key={u.unitName} value={u.unitName} className="text-slate-800 font-sans">
+                                            {u.unitName} ({formatRupiah(u.sellPrice)})
+                                          </option>
+                                        ))}
+                                      </select>
+                                      <ChevronDown className="h-2.5 w-2.5 text-emerald-700 pointer-events-none absolute right-1 top-1/2 -translate-y-1/2" />
+                                    </div>
+                                    {item.conversionFactor > 1 && (
+                                      <span className="text-[8px] text-slate-400 font-mono mt-0.5">
+                                        @{item.conversionFactor} {product?.baseUnit || "tab"}
+                                      </span>
+                                    )}
+                                  </div>
+                                );
+                              }
+
+                              return (
+                                <span className="inline-block px-1.5 py-0.5 rounded bg-slate-100 text-slate-700 font-semibold text-[10px] font-sans border border-slate-200">
+                                  {item.unitName}
+                                </span>
+                              );
+                            })()}
+                          </td>
                           <td className="py-1 px-1.5 text-right text-slate-600 text-[11px]">{formatRupiah(item.sellPrice)}</td>
                           <td className="py-1 px-1.5">
                             <div className="flex items-center justify-center gap-0.5 bg-slate-50 border border-slate-200 rounded p-0.5">
