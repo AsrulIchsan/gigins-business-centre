@@ -37,7 +37,7 @@ export function AppLayout({ children }: AppLayoutProps) {
           className={cn(
             "flex-1",
             isPosPage
-              ? "p-2 sm:p-2.5 lg:p-3 overflow-hidden flex flex-col"
+              ? "p-1.5 sm:p-2 lg:p-2 overflow-hidden flex flex-col h-full"
               : "p-4 lg:p-6 overflow-y-auto"
           )}
         >

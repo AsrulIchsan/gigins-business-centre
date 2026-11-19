@@ -229,6 +229,15 @@ export function generateThermalReceiptHtml(
         : ""
     }
 
+    ${
+      (data.roundingAmount || 0) > 0
+        ? `<div class="flex-between" style="font-size: 0.85em; color: #555;">
+            <span>Pembulatan (+Rp 500 keatas):</span>
+            <span>+${formatRp(data.roundingAmount!)}</span>
+           </div>`
+        : ""
+    }
+
     <div class="dashed"></div>
 
     <div class="flex-between total-row">
@@ -260,14 +269,6 @@ export function generateThermalReceiptHtml(
     ${
       data.paymentMethod === "CASH"
         ? `
-      ${
-        (data.roundingAmount || 0) > 0
-          ? `<div class="flex-between" style="font-size: 0.85em;">
-              <span>Pembulatan (+Rp 500 keatas):</span>
-              <span>+${formatRp(data.roundingAmount!)}</span>
-             </div>`
-          : ""
-      }
       <div class="flex-between" style="font-size: 1.05em; font-weight: 800; margin-top: 2px;">
         <span>Kembalian Diserahkan:</span>
         <span>${formatRp(data.change)}</span>

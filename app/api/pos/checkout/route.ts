@@ -97,7 +97,7 @@ export async function POST(request: Request) {
     }
 
     const totalFees = Number(compoundingFee) + Number(embalaseFee);
-    const finalTotal = subtotal + totalFees - Number(discountAmount);
+    const finalTotal = subtotal + totalFees - Number(discountAmount) + Number(roundingAmount || 0);
 
     // Audit trail logging with payment details
     await activityLogger.sale
