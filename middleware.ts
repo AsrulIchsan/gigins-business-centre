@@ -109,8 +109,8 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
-  // Izinkan public API auth routes
-  if (PUBLIC_PATHS.some((p) => pathname.startsWith(p))) {
+  // Izinkan seluruh REST API dan public paths agar API tidak ter-redirect ke /login (yang memicu error 405 Method Not Allowed)
+  if (pathname.startsWith("/api/") || PUBLIC_PATHS.some((p) => pathname.startsWith(p))) {
     return NextResponse.next();
   }
 
