@@ -32,6 +32,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { useBusinessStore } from "@/lib/business-store";
 import { useAuth } from "@/lib/use-auth";
+import AiPharmacistWidget from "@/components/ai-pharmacist/ai-pharmacist-widget";
 
 export default function DashboardPage() {
   const pathname = usePathname();
@@ -66,6 +67,7 @@ export default function DashboardPage() {
   ];
 
   return (
+    <>
     <div className="space-y-6">
       {/* Top Banner - Dynamic based on active business unit */}
       <div
@@ -527,5 +529,9 @@ export default function DashboardPage() {
         )}
       </div>
     </div>
+
+      {/* ── Asisten Apoteker Pintar (Gemini AI) — hanya untuk Pharmacy ── */}
+      {isPharmacy && <AiPharmacistWidget page="dashboard" />}
+    </>
   );
 }

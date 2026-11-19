@@ -71,6 +71,7 @@ import {
   DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog";
+import AiPharmacistWidget from "@/components/ai-pharmacist/ai-pharmacist-widget";
 
 interface CartItem {
   productId: string;
@@ -683,6 +684,44 @@ export default function PosPage() {
           selectedBatchNumber: fifoBatch ? fifoBatch.batchNumber : "BATCH-GEN",
           expiredDate: fifoBatch ? fifoBatch.expiredDate : "2027-12-31",
           isCompounding: saleType === "COMPOUNDING",
+        },
+      ]);
+    }
+  };
+
+  // ─── Add from AI Pharmacist Recommendation ───────────────────────────────
+  const addToCartFromAI = (aiProduct: {
+    productId: string;
+    name: string;
+    price: number;
+    baseUnit: string;
+  }) => {
+    // Try to find the full product in the master data for FIFO batch
+    const fullProduct = productList.find((p) => p.id === aiProduct.productId);
+    if (fullProduct) {
+      addToCart(fullProduct, 0);
+      return;
+    }
+    // Fallback: add directly with AI-provided info
+    const existingIndex = cart.findIndex((item) => item.productId === aiProduct.productId);
+    if (existingIndex > -1) {
+      const updated = [...cart];
+      updated[existingIndex].qty += 1;
+      updated[existingIndex].subtotal = updated[existingIndex].qty * updated[existingIndex].sellPrice;
+      setCart(updated);
+    } else {
+      setCart([
+        ...cart,
+        {
+          productId: aiProduct.productId,
+          name: aiProduct.name,
+          unitName: aiProduct.baseUnit || "Pcs",
+          conversionFactor: 1,
+          qty: 1,
+          sellPrice: aiProduct.price,
+          subtotal: aiProduct.price,
+          selectedBatchNumber: "BATCH-AI",
+          expiredDate: "2027-12-31",
         },
       ]);
     }
@@ -2570,6 +2609,12 @@ export default function PosPage() {
           </form>
         </DialogContent>
       </Dialog>
+
+      {/* ── Asisten Apoteker Pintar (Gemini AI) — Floating Widget ── */}
+      <AiPharmacistWidget
+        onAddToCart={addToCartFromAI}
+        page="pos"
+      />
     </div>
   );
 }
