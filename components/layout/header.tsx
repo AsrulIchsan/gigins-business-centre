@@ -20,7 +20,6 @@ import {
   Store,
   LogOut,
 } from "lucide-react";
-import { ACTIVE_SHIFT } from "@/lib/mock-data";
 import { formatRupiah } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -273,13 +272,19 @@ export function Header() {
 
       {/* Right Action Section */}
       <div className="flex items-center space-x-3">
-        {/* Active Shift Indicator */}
-        <div
-          className={`hidden sm:flex items-center rounded-lg px-3 py-1.5 space-x-2 border ${
+        {/* Kasir Register Status (Continuous - Transaksi Berjalan Terus) */}
+        <Link
+          href={
+            pathname?.startsWith("/b/")
+              ? `/b/${activeBusiness.slug}/pos`
+              : "/pos"
+          }
+          className={`hidden sm:flex items-center rounded-lg px-2.5 py-1.5 space-x-2 border transition-all hover:shadow-xs ${
             isPharmacy
-              ? "bg-emerald-50 border-emerald-200"
-              : "bg-amber-50 border-amber-200"
+              ? "bg-emerald-50/80 border-emerald-200 text-emerald-800 hover:bg-emerald-100/70"
+              : "bg-amber-50/80 border-amber-200 text-amber-800 hover:bg-amber-100/70"
           }`}
+          title="POS Kasir Aktif - Transaksi Berjalan Terus Menerus"
         >
           <div
             className={`w-2 h-2 rounded-full animate-pulse ${
@@ -287,39 +292,14 @@ export function Header() {
             }`}
           />
           <div className="text-left text-xs">
-            <span
-              className={`font-semibold block leading-tight ${
-                isPharmacy ? "text-emerald-900" : "text-amber-900"
-              }`}
-            >
-              {ACTIVE_SHIFT.shiftNumber}
+            <span className="font-bold block leading-tight text-[11px]">
+              Kasir Aktif
             </span>
-            <span
-              className={`text-[10px] ${
-                isPharmacy ? "text-emerald-700" : "text-amber-700"
-              }`}
-            >
-              Kas Awal: {formatRupiah(ACTIVE_SHIFT.openingCash)}
+            <span className="text-[10px] text-slate-500">
+              Transaksi Berjalan Terus
             </span>
           </div>
-          <Link
-            href={
-              pathname?.startsWith("/b/")
-                ? `/b/${activeBusiness.slug}/laporan/shift`
-                : "/laporan/shift"
-            }
-          >
-            <Button
-              variant="ghost"
-              size="sm"
-              className={`h-6 text-[10px] px-1.5 ${
-                isPharmacy ? "text-emerald-800" : "text-amber-800"
-              }`}
-            >
-              Tutup Shift
-            </Button>
-          </Link>
-        </div>
+        </Link>
 
         {/* Notifications Dropdown */}
         <div className="relative">

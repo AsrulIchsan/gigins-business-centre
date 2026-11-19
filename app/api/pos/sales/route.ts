@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { livePosSales, addLivePosSale, PosSaleRecord } from "@/lib/pos-sales-data";
+import { getAllPosSales, addLivePosSale, PosSaleRecord } from "@/lib/pos-sales-data";
 
 export const dynamic = "force-dynamic";
 export const fetchCache = "force-no-store";
@@ -19,7 +19,7 @@ export async function GET(request: NextRequest) {
     const saleNumber = searchParams.get("saleNumber");
 
     if (saleNumber) {
-      const single = livePosSales.find(
+      const single = getAllPosSales().find(
         (s) => s.saleNumber.toLowerCase() === saleNumber.toLowerCase()
       );
       if (single) {
@@ -110,8 +110,8 @@ export async function GET(request: NextRequest) {
         createdAt: s.createdAt.toISOString(),
       }));
 
-      // Merge with livePosSales to include any just-completed sales
-      const merged = [...livePosSales];
+      // Merge with getAllPosSales() to include any just-completed sales
+      const merged = [...getAllPosSales()];
       for (const m of mapped) {
         if (!merged.some((s) => s.saleNumber === m.saleNumber)) {
           merged.push(m);
@@ -125,7 +125,7 @@ export async function GET(request: NextRequest) {
     }
 
     return NextResponse.json(
-      { success: true, source: "in_memory", sales: livePosSales },
+      { success: true, source: "in_memory", sales: getAllPosSales() },
       { headers: NO_CACHE_HEADERS }
     );
   } catch (error: any) {

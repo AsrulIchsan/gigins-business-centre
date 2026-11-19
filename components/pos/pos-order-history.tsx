@@ -131,6 +131,9 @@ export default function PosOrderHistory({
   // Filters
   const [channelFilter, setChannelFilter] = useState<string>(initialChannelFilter);
   const [statusFilter, setStatusFilter] = useState<string>("ALL");
+  const [dateFilter, setDateFilter] = useState<"ALL" | "TODAY" | "WEEK" | "MONTH" | "CUSTOM">("ALL");
+  const [customDateStart, setCustomDateStart] = useState<string>("");
+  const [customDateEnd, setCustomDateEnd] = useState<string>("");
   const [searchQuery, setSearchQuery] = useState("");
 
   // Print & Receipt Modal
@@ -228,7 +231,24 @@ export default function PosOrderHistory({
       });
       const dataPos = await resPos.json();
       if (dataPos.success && Array.isArray(dataPos.sales)) {
-        setPosSales(dataPos.sales);
+        let mergedSales: PosSaleRecord[] = [...dataPos.sales];
+        // Merge with client localStorage backup if any for zero-latency local sales
+        if (typeof window !== "undefined") {
+          try {
+            const localBackup = localStorage.getItem("gigins_recent_pos_sales");
+            if (localBackup) {
+              const parsed: PosSaleRecord[] = JSON.parse(localBackup);
+              if (Array.isArray(parsed)) {
+                for (const s of parsed) {
+                  if (!mergedSales.some((m) => m.saleNumber === s.saleNumber)) {
+                    mergedSales.unshift(s);
+                  }
+                }
+              }
+            }
+          } catch {}
+        }
+        setPosSales(mergedSales);
       }
 
       setLastSyncTime(new Date());
@@ -255,6 +275,7 @@ export default function PosOrderHistory({
   useEffect(() => {
     let orderSyncChannel: BroadcastChannel | null = null;
     let newOrderChannel: BroadcastChannel | null = null;
+    let posSyncChannel: BroadcastChannel | null = null;
 
     try {
       orderSyncChannel = new BroadcastChannel("order_status_sync");
@@ -277,8 +298,25 @@ export default function PosOrderHistory({
       };
     } catch {}
 
+    try {
+      posSyncChannel = new BroadcastChannel("pos_sales_sync");
+      posSyncChannel.onmessage = (event) => {
+        if (event.data?.sale) {
+          setPosSales((prev) => {
+            if (prev.some((s) => s.saleNumber === event.data.sale.saleNumber)) return prev;
+            return [event.data.sale, ...prev];
+          });
+        }
+        fetchAllOrders(true);
+      };
+    } catch {}
+
     const handleStorage = (e: StorageEvent) => {
-      if (e.key === "last_order_status_sync" || e.key === "last_new_online_order") {
+      if (
+        e.key === "last_order_status_sync" ||
+        e.key === "last_new_online_order" ||
+        e.key === "last_pos_sale_sync"
+      ) {
         if (e.key === "last_new_online_order" && soundEnabled) {
           playNewOrderChime(0.4);
         }
@@ -291,6 +329,7 @@ export default function PosOrderHistory({
     return () => {
       if (orderSyncChannel) orderSyncChannel.close();
       if (newOrderChannel) newOrderChannel.close();
+      if (posSyncChannel) posSyncChannel.close();
       window.removeEventListener("storage", handleStorage);
     };
   }, [soundEnabled]);
@@ -403,6 +442,37 @@ export default function PosOrderHistory({
         return false;
       }
 
+      // Date filter (Hari Ini, 7 Hari Terakhir, Bulan Ini, Custom)
+      if (dateFilter !== "ALL") {
+        const orderTime = new Date(ord.createdAt).getTime();
+        const now = new Date();
+
+        if (dateFilter === "TODAY") {
+          const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0).getTime();
+          const endOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999).getTime();
+          if (orderTime < startOfDay || orderTime > endOfDay) return false;
+        } else if (dateFilter === "WEEK") {
+          const startOfWeek = new Date(now);
+          startOfWeek.setDate(now.getDate() - 6);
+          startOfWeek.setHours(0, 0, 0, 0);
+          if (orderTime < startOfWeek.getTime()) return false;
+        } else if (dateFilter === "MONTH") {
+          const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0, 0).getTime();
+          if (orderTime < startOfMonth) return false;
+        } else if (dateFilter === "CUSTOM") {
+          if (customDateStart) {
+            const start = new Date(customDateStart);
+            start.setHours(0, 0, 0, 0);
+            if (orderTime < start.getTime()) return false;
+          }
+          if (customDateEnd) {
+            const end = new Date(customDateEnd);
+            end.setHours(23, 59, 59, 999);
+            if (orderTime > end.getTime()) return false;
+          }
+        }
+      }
+
       // Search query
       if (searchQuery.trim()) {
         const q = searchQuery.toLowerCase();
@@ -415,7 +485,7 @@ export default function PosOrderHistory({
 
       return true;
     });
-  }, [unifiedOrders, channelFilter, statusFilter, searchQuery]);
+  }, [unifiedOrders, channelFilter, statusFilter, dateFilter, customDateStart, customDateEnd, searchQuery]);
 
   // Counts for tabs/badges
   const countTotal = unifiedOrders.length;
@@ -824,6 +894,98 @@ export default function PosOrderHistory({
               {countMarketplace}
             </span>
           </button>
+        </div>
+
+        {/* Date Filter Row (Hari Ini / Minggu Ini / Bulan Ini / Custom Tanggal) */}
+        <div className="flex items-center gap-1.5 flex-wrap pt-2 border-t border-slate-100">
+          <span className="text-xs font-semibold text-slate-500 whitespace-nowrap flex items-center gap-1 mr-1">
+            <Calendar className="w-3.5 h-3.5 text-emerald-600" /> Periode:
+          </span>
+
+          <button
+            onClick={() => setDateFilter("ALL")}
+            className={`px-3 py-1 rounded-lg text-xs font-bold transition-all whitespace-nowrap ${
+              dateFilter === "ALL"
+                ? "bg-slate-800 text-white shadow-xs"
+                : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+            }`}
+          >
+            Semua Waktu
+          </button>
+
+          <button
+            onClick={() => setDateFilter("TODAY")}
+            className={`px-3 py-1 rounded-lg text-xs font-bold transition-all whitespace-nowrap ${
+              dateFilter === "TODAY"
+                ? "bg-emerald-700 text-white shadow-xs"
+                : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+            }`}
+          >
+            Hari Ini
+          </button>
+
+          <button
+            onClick={() => setDateFilter("WEEK")}
+            className={`px-3 py-1 rounded-lg text-xs font-bold transition-all whitespace-nowrap ${
+              dateFilter === "WEEK"
+                ? "bg-emerald-700 text-white shadow-xs"
+                : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+            }`}
+          >
+            7 Hari Terakhir
+          </button>
+
+          <button
+            onClick={() => setDateFilter("MONTH")}
+            className={`px-3 py-1 rounded-lg text-xs font-bold transition-all whitespace-nowrap ${
+              dateFilter === "MONTH"
+                ? "bg-emerald-700 text-white shadow-xs"
+                : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+            }`}
+          >
+            Bulan Ini
+          </button>
+
+          <button
+            onClick={() => setDateFilter("CUSTOM")}
+            className={`px-3 py-1 rounded-lg text-xs font-bold transition-all whitespace-nowrap ${
+              dateFilter === "CUSTOM"
+                ? "bg-emerald-700 text-white shadow-xs"
+                : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+            }`}
+          >
+            Pilih Tanggal...
+          </button>
+
+          {dateFilter === "CUSTOM" && (
+            <div className="flex items-center gap-1.5 flex-wrap ml-1 bg-slate-50 p-1 rounded-lg border border-slate-200">
+              <input
+                type="date"
+                value={customDateStart}
+                onChange={(e) => setCustomDateStart(e.target.value)}
+                className="h-7 text-xs rounded border border-slate-300 bg-white px-2 font-medium text-slate-700 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+              />
+              <span className="text-xs text-slate-400">s/d</span>
+              <input
+                type="date"
+                value={customDateEnd}
+                onChange={(e) => setCustomDateEnd(e.target.value)}
+                className="h-7 text-xs rounded border border-slate-300 bg-white px-2 font-medium text-slate-700 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+              />
+              {(customDateStart || customDateEnd) && (
+                <button
+                  onClick={() => {
+                    setCustomDateStart("");
+                    setCustomDateEnd("");
+                  }}
+                  className="text-[11px] text-slate-400 hover:text-slate-600 px-1"
+                  title="Reset rentang tanggal"
+                >
+                  ✕
+                </button>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Status Filter & Search Input */}

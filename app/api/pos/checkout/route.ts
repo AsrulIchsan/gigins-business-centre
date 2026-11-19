@@ -50,7 +50,7 @@ export async function POST(request: Request) {
       );
     }
 
-    const saleNumber = `SL-TS-${Date.now().toString().slice(-6)}`;
+    const saleNumber = body.saleNumber || `SL-TS-${Date.now().toString().slice(-6)}`;
     let totalCOGS = 0;
     let subtotal = 0;
 

@@ -1,7 +1,12 @@
 /**
  * lib/pos-sales-data.ts
- * In-memory Store & Fallback Records for POS Cashier Transactions
+ * Persistent Store for POS Cashier Transactions
+ * Uses globalThis cache + /tmp file fallback (same pattern as lib/audit-storage.ts)
  */
+
+import fs from "fs";
+import path from "path";
+import os from "os";
 
 export interface PosSaleItem {
   productId?: string;
@@ -51,6 +56,34 @@ export interface PosSaleRecord {
   status: "COMPLETED" | "RETURNED" | "PARTIAL_RETURN";
   createdAt: string;
 }
+
+// ─── Storage Paths ────────────────────────────────────────────────────────────
+
+const CWD_DATA_DIR = path.join(process.cwd(), "data");
+const CWD_POS_SALES_FILE = path.join(CWD_DATA_DIR, "pos_sales.json");
+
+const TMP_DATA_DIR = path.join(os.tmpdir(), "gigins_data");
+const TMP_POS_SALES_FILE = path.join(TMP_DATA_DIR, "pos_sales.json");
+
+// ─── GlobalThis Cache ─────────────────────────────────────────────────────────
+
+const globalPosStore = globalThis as unknown as {
+  __possSalesCache?: PosSaleRecord[];
+};
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+function ensureDirSafe(dirPath: string) {
+  try {
+    if (!fs.existsSync(dirPath)) {
+      fs.mkdirSync(dirPath, { recursive: true });
+    }
+  } catch {
+    // Ignore read-only filesystem errors silently
+  }
+}
+
+// ─── Seed Data ────────────────────────────────────────────────────────────────
 
 const now = Date.now();
 
@@ -251,12 +284,94 @@ export const INITIAL_POS_SALES: PosSaleRecord[] = [
   },
 ];
 
-// Global in-memory list across requests
-export const livePosSales: PosSaleRecord[] = [...INITIAL_POS_SALES];
+// ─── Core Functions ───────────────────────────────────────────────────────────
+
+export function getAllPosSales(): PosSaleRecord[] {
+  // 1. If in-memory cache is populated, return immediately
+  if (globalPosStore.__possSalesCache && globalPosStore.__possSalesCache.length > 0) {
+    return globalPosStore.__possSalesCache;
+  }
+
+  // 2. Try reading from writable TMP directory first (has latest runtime sales)
+  try {
+    if (fs.existsSync(TMP_POS_SALES_FILE)) {
+      const raw = fs.readFileSync(TMP_POS_SALES_FILE, "utf-8");
+      const data = JSON.parse(raw);
+      if (Array.isArray(data) && data.length > 0) {
+        globalPosStore.__possSalesCache = data;
+        return data;
+      }
+    }
+  } catch (err) {
+    console.warn("[PosSalesData] Warning reading TMP pos_sales.json:", err);
+  }
+
+  // 3. Try reading from project bundle (data/pos_sales.json)
+  try {
+    if (fs.existsSync(CWD_POS_SALES_FILE)) {
+      const raw = fs.readFileSync(CWD_POS_SALES_FILE, "utf-8");
+      const data = JSON.parse(raw);
+      if (Array.isArray(data) && data.length > 0) {
+        globalPosStore.__possSalesCache = data;
+        return data;
+      }
+    }
+  } catch (err) {
+    console.warn("[PosSalesData] Warning reading CWD pos_sales.json:", err);
+  }
+
+  // 4. Default to seed data
+  globalPosStore.__possSalesCache = [...INITIAL_POS_SALES];
+
+  // Persist seed to TMP so future reads are fast
+  try {
+    ensureDirSafe(TMP_DATA_DIR);
+    fs.writeFileSync(TMP_POS_SALES_FILE, JSON.stringify(INITIAL_POS_SALES, null, 2), "utf-8");
+  } catch {}
+
+  return globalPosStore.__possSalesCache;
+}
 
 export function addLivePosSale(sale: PosSaleRecord): void {
+  const current = getAllPosSales();
+
   // Prevent duplicate
-  if (!livePosSales.some((s) => s.saleNumber === sale.saleNumber)) {
-    livePosSales.unshift(sale);
+  if (current.some((s) => s.saleNumber === sale.saleNumber)) {
+    return;
+  }
+
+  const updated = [sale, ...current].slice(0, 500);
+  globalPosStore.__possSalesCache = updated;
+
+  // Persist to TMP file (writable in Vercel serverless)
+  try {
+    ensureDirSafe(TMP_DATA_DIR);
+    fs.writeFileSync(TMP_POS_SALES_FILE, JSON.stringify(updated, null, 2), "utf-8");
+  } catch (err) {
+    console.warn("[PosSalesData] Failed to write TMP pos_sales.json:", err);
+  }
+
+  // Persist to local project directory (local dev)
+  try {
+    ensureDirSafe(CWD_DATA_DIR);
+    fs.writeFileSync(CWD_POS_SALES_FILE, JSON.stringify(updated, null, 2), "utf-8");
+  } catch {
+    // Read-only filesystem on Vercel is expected and safe to ignore
   }
 }
+
+// Backwards-compatible export: computed array from globalThis cache
+// (Note: on serverless, use getAllPosSales() for freshest data)
+export const livePosSales: PosSaleRecord[] = new Proxy([] as PosSaleRecord[], {
+  get(target, prop, receiver) {
+    const live = getAllPosSales();
+    if (prop === "length") return live.length;
+    if (prop === Symbol.iterator) return live[Symbol.iterator].bind(live);
+    if (typeof prop === "string" && !isNaN(Number(prop))) return live[Number(prop)];
+    // For array methods like find, some, map, filter, etc.
+    if (typeof prop === "string" && typeof (live as any)[prop] === "function") {
+      return (live as any)[prop].bind(live);
+    }
+    return Reflect.get(target, prop, receiver);
+  },
+});

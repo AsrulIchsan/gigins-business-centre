@@ -791,6 +791,7 @@ export default function PosPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          saleNumber,
           businessId: activeBusiness?.id || "biz-apotik-tamansari",
           saleType,
           items: cart.map((i) => ({
@@ -827,8 +828,17 @@ export default function PosPage() {
       setCart([]);
       setCashGiven(0);
 
-      // Broadcast POS sale sync so order history gets live update immediately
+      // Save to client localStorage backup for resilient real-time history
       if (typeof window !== "undefined") {
+        try {
+          const raw = localStorage.getItem("gigins_recent_pos_sales");
+          const existing = raw ? JSON.parse(raw) : [];
+          const updated = [saleRecord, ...existing.filter((s: any) => s.saleNumber !== saleNumber)].slice(0, 50);
+          localStorage.setItem("gigins_recent_pos_sales", JSON.stringify(updated));
+          localStorage.setItem("last_pos_sale_sync", Date.now().toString());
+        } catch {}
+
+        // Broadcast POS sale sync so order history gets live update immediately
         try {
           const ch = new BroadcastChannel("pos_sales_sync");
           ch.postMessage({ saleNumber, sale: saleRecord, timestamp: Date.now() });
@@ -861,7 +871,7 @@ export default function PosPage() {
             )}
           </div>
           <p className="text-xs text-slate-500 mt-0.5">
-            Shift: {ACTIVE_SHIFT.shiftNumber} &bull; Kasir: {ACTIVE_SHIFT.cashierName} &bull; Bisnis:{" "}
+            Kasir: {ACTIVE_SHIFT.cashierName} &bull; Bisnis:{" "}
             <strong>{activeBusiness?.name || "Apotik Tamansari"}</strong>
           </p>
         </div>

@@ -21,6 +21,10 @@ import {
   CheckCircle2,
   X,
   AlertTriangle,
+  History,
+  Laptop,
+  Smartphone,
+  Tablet,
 } from "lucide-react";
 
 const MODULES = ["Semua", "POS", "PRODUCT", "PURCHASE", "STOCK", "FINANCE", "USER", "CRM", "SETTING"];
@@ -122,9 +126,11 @@ export default function AuditLogPage() {
   const isPharmacy = slug === "apotik-tamansari";
   const businessName = isPharmacy ? "Apotik Tamansari" : "Toko Mainan Pasar Lelea";
 
+  const [activeTab, setActiveTab] = useState<"activity" | "login">("activity");
   const [selectedModule, setSelectedModule] = useState("Semua");
   const [selectedAction, setSelectedAction] = useState("Semua");
   const [logsList, setLogsList] = useState(ALL_MOCK_LOGS);
+  const [loginLogsList, setLoginLogsList] = useState<any[]>([]);
   const [selectedLog, setSelectedLog] = useState<any | null>(null);
 
   useEffect(() => {
@@ -132,21 +138,26 @@ export default function AuditLogPage() {
       try {
         const res = await fetch(`/api/audit-logs?businessSlug=${slug}`, { cache: "no-store" });
         const data = await res.json();
-        if (data.success && Array.isArray(data.activityLogs) && data.activityLogs.length > 0) {
-          const mapped = data.activityLogs.map((a: any) => ({
-            id: a.id,
-            businessSlug: a.businessSlug,
-            user: a.userName,
-            role: a.userRole,
-            module: a.module,
-            action: a.action,
-            entity: a.entityName || a.entityId,
-            desc: a.description,
-            time: a.time,
-            oldData: a.oldData,
-            newData: a.newData,
-          }));
-          setLogsList(mapped);
+        if (data.success) {
+          if (Array.isArray(data.activityLogs) && data.activityLogs.length > 0) {
+            const mapped = data.activityLogs.map((a: any) => ({
+              id: a.id,
+              businessSlug: a.businessSlug,
+              user: a.userName,
+              role: a.userRole,
+              module: a.module,
+              action: a.action,
+              entity: a.entityName || a.entityId,
+              desc: a.description,
+              time: a.time,
+              oldData: a.oldData,
+              newData: a.newData,
+            }));
+            setLogsList(mapped);
+          }
+          if (Array.isArray(data.loginLogs)) {
+            setLoginLogsList(data.loginLogs);
+          }
         }
       } catch (err) {
         console.error("Gagal memuat log audit cabang:", err);
@@ -234,94 +245,178 @@ export default function AuditLogPage() {
         </div>
       </div>
 
-      {/* Filters */}
-      <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs flex flex-wrap items-center justify-between gap-3">
-        <div className="flex flex-wrap items-center gap-2">
-          <div className="flex items-center gap-1.5 text-xs text-slate-500 font-semibold mr-2">
-            <Filter className="w-4 h-4 text-slate-400" />
-            <span>Filter Cabang:</span>
-          </div>
+      {/* Navigation Tabs: Riwayat Aktivitas vs Riwayat Login */}
+      <div className="flex items-center gap-2 border-b border-slate-200 pb-2">
+        <button
+          onClick={() => setActiveTab("activity")}
+          className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition-all ${
+            activeTab === "activity"
+              ? "bg-emerald-600 text-white shadow-sm"
+              : "bg-white text-slate-600 hover:bg-slate-50 border border-slate-200"
+          }`}
+        >
+          <Eye className="w-4 h-4" />
+          <span>Riwayat Perubahan Data ({filtered.length})</span>
+        </button>
 
-          <select
-            value={selectedModule}
-            onChange={(e) => setSelectedModule(e.target.value)}
-            className="text-xs font-medium border border-slate-200 rounded-xl px-3 py-1.5 bg-slate-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-slate-700"
-          >
-            {MODULES.map((m) => (
-              <option key={m} value={m}>
-                Modul: {m}
-              </option>
-            ))}
-          </select>
-
-          <select
-            value={selectedAction}
-            onChange={(e) => setSelectedAction(e.target.value)}
-            className="text-xs font-medium border border-slate-200 rounded-xl px-3 py-1.5 bg-slate-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-slate-700"
-          >
-            {ACTIONS.map((a) => (
-              <option key={a} value={a}>
-                Aksi: {a}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        <span className="text-xs text-slate-400 font-medium">
-          Ditemukan <strong>{filtered.length}</strong> catatan aktivitas
-        </span>
+        <button
+          onClick={() => setActiveTab("login")}
+          className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition-all ${
+            activeTab === "login"
+              ? "bg-emerald-600 text-white shadow-sm"
+              : "bg-white text-slate-600 hover:bg-slate-50 border border-slate-200"
+          }`}
+        >
+          <History className="w-4 h-4" />
+          <span>Riwayat Login Pegawai ({loginLogsList.length})</span>
+        </button>
       </div>
 
-      {/* Log List */}
-      <div className="bg-white rounded-2xl border border-slate-200 shadow-xs divide-y divide-slate-100 overflow-hidden">
-        {filtered.length === 0 ? (
-          <div className="p-12 text-center text-slate-400 text-xs">
-            Tidak ada data log yang cocok dengan filter di cabang ini.
-          </div>
-        ) : (
-          filtered.map((log) => (
-            <div
-              key={log.id}
-              className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 hover:bg-slate-50/80 transition"
-            >
-              <div className="flex items-start gap-3.5 flex-1 min-w-0">
-                <span
-                  className={`mt-0.5 inline-block text-[10px] font-bold px-2 py-0.5 rounded-full border shrink-0 ${
-                    ACTION_COLORS[log.action] ?? "bg-slate-50 text-slate-700 border-slate-200"
-                  }`}
-                >
-                  {log.action}
-                </span>
-
-                <div className="min-w-0 flex-1">
-                  <p className="text-xs font-bold text-slate-900 leading-snug">{log.desc}</p>
-                  <p className="text-[11px] text-slate-400 mt-0.5">
-                    <span className="font-semibold text-slate-600">{log.user}</span> &bull;{" "}
-                    <span className="font-mono text-slate-500">{log.module}</span> &bull;{" "}
-                    <span>Ref: {log.entity}</span>
-                  </p>
+      {activeTab === "login" ? (
+        <div className="bg-white rounded-2xl border border-slate-200 shadow-xs divide-y divide-slate-100 overflow-hidden">
+          {loginLogsList.length === 0 ? (
+            <div className="p-12 text-center text-slate-400 text-xs">
+              Belum ada riwayat login untuk cabang ini.
+            </div>
+          ) : (
+            loginLogsList.map((log: any) => (
+              <div
+                key={log.id}
+                className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 hover:bg-slate-50/80 transition"
+              >
+                <div className="flex items-start gap-3.5 flex-1 min-w-0">
+                  <div className="mt-0.5">
+                    {log.deviceType === "mobile" ? (
+                      <Smartphone className="w-5 h-5 text-indigo-500" />
+                    ) : log.deviceType === "tablet" ? (
+                      <Tablet className="w-5 h-5 text-amber-500" />
+                    ) : (
+                      <Laptop className="w-5 h-5 text-emerald-500" />
+                    )}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2">
+                      <span className="font-bold text-xs text-slate-900">{log.userName}</span>
+                      <span className="text-[10px] font-semibold text-slate-500 px-2 py-0.5 bg-slate-100 rounded-full">
+                        {log.role}
+                      </span>
+                      <span
+                        className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                          log.status === "SUCCESS"
+                            ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
+                            : "bg-rose-50 text-rose-700 border border-rose-200"
+                        }`}
+                      >
+                        {log.status === "SUCCESS" ? "BERHASIL" : "GAGAL"}
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-slate-400 mt-0.5">
+                      <span>{log.userEmail}</span> &bull;{" "}
+                      <span>Device: {log.device}</span> &bull;{" "}
+                      <span>IP: {log.ipAddress}</span>
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-1.5 text-xs text-slate-400 shrink-0 font-medium">
+                  <Clock className="w-3.5 h-3.5" />
+                  <span>{log.time}</span>
                 </div>
               </div>
-
-              <div className="flex items-center justify-between sm:justify-end gap-3 shrink-0">
-                <span className="text-xs text-slate-400 flex items-center gap-1 font-medium">
-                  <Clock className="w-3.5 h-3.5" /> {log.time}
-                </span>
-
-                {(log.oldData || log.newData) && (
-                  <button
-                    onClick={() => setSelectedLog(log)}
-                    className="inline-flex items-center gap-1 px-3 py-1.5 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 rounded-xl text-xs font-bold transition shadow-2xs"
-                  >
-                    <Eye className="w-3.5 h-3.5" />
-                    <span>Lihat Diff</span>
-                  </button>
-                )}
+            ))
+          )}
+        </div>
+      ) : (
+        <>
+          {/* Filters */}
+          <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs flex flex-wrap items-center justify-between gap-3">
+            <div className="flex flex-wrap items-center gap-2">
+              <div className="flex items-center gap-1.5 text-xs text-slate-500 font-semibold mr-2">
+                <Filter className="w-4 h-4 text-slate-400" />
+                <span>Filter Cabang:</span>
               </div>
+
+              <select
+                value={selectedModule}
+                onChange={(e) => setSelectedModule(e.target.value)}
+                className="text-xs font-medium border border-slate-200 rounded-xl px-3 py-1.5 bg-slate-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-slate-700"
+              >
+                {MODULES.map((m) => (
+                  <option key={m} value={m}>
+                    Modul: {m}
+                  </option>
+                ))}
+              </select>
+
+              <select
+                value={selectedAction}
+                onChange={(e) => setSelectedAction(e.target.value)}
+                className="text-xs font-medium border border-slate-200 rounded-xl px-3 py-1.5 bg-slate-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-slate-700"
+              >
+                {ACTIONS.map((a) => (
+                  <option key={a} value={a}>
+                    Aksi: {a}
+                  </option>
+                ))}
+              </select>
             </div>
-          ))
-        )}
-      </div>
+
+            <span className="text-xs text-slate-400 font-medium">
+              Ditemukan <strong>{filtered.length}</strong> catatan aktivitas
+            </span>
+          </div>
+
+          {/* Log List */}
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-xs divide-y divide-slate-100 overflow-hidden">
+            {filtered.length === 0 ? (
+              <div className="p-12 text-center text-slate-400 text-xs">
+                Tidak ada data log yang cocok dengan filter di cabang ini.
+              </div>
+            ) : (
+              filtered.map((log) => (
+                <div
+                  key={log.id}
+                  className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 hover:bg-slate-50/80 transition"
+                >
+                  <div className="flex items-start gap-3.5 flex-1 min-w-0">
+                    <span
+                      className={`mt-0.5 inline-block text-[10px] font-bold px-2 py-0.5 rounded-full border shrink-0 ${
+                        ACTION_COLORS[log.action] ?? "bg-slate-50 text-slate-700 border-slate-200"
+                      }`}
+                    >
+                      {log.action}
+                    </span>
+
+                    <div className="min-w-0 flex-1">
+                      <p className="text-xs font-bold text-slate-900 leading-snug">{log.desc}</p>
+                      <p className="text-[11px] text-slate-400 mt-0.5">
+                        <span className="font-semibold text-slate-600">{log.user}</span> &bull;{" "}
+                        <span className="font-mono text-slate-500">{log.module}</span> &bull;{" "}
+                        <span>Ref: {log.entity}</span>
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-between sm:justify-end gap-3 shrink-0">
+                    <span className="text-xs text-slate-400 flex items-center gap-1 font-medium">
+                      <Clock className="w-3.5 h-3.5" /> {log.time}
+                    </span>
+
+                    {(log.oldData || log.newData) && (
+                      <button
+                        onClick={() => setSelectedLog(log)}
+                        className="inline-flex items-center gap-1 px-3 py-1.5 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 rounded-xl text-xs font-bold transition shadow-2xs"
+                      >
+                        <Eye className="w-3.5 h-3.5" />
+                        <span>Lihat Diff</span>
+                      </button>
+                    )}
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        </>
+      )}
 
       {/* MODAL: DIFF BEFORE VS AFTER */}
       {selectedLog && (

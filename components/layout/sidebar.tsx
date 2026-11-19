@@ -55,6 +55,7 @@ export function Sidebar() {
   const { user, logout } = useAuth();
   const { isOpen, close } = useSidebarStore();
   const isPharmacy = activeBusiness.type === "PHARMACY";
+  const isOwner = user?.role === "OWNER";
 
   // Dynamic Navigation Sections based on Business Type
   const navigationSections: NavSection[] = isPharmacy
@@ -95,7 +96,7 @@ export function Sidebar() {
         {
           title: "LAPORAN & AKUNTANSI",
           items: [
-            { title: "Laporan Shift Kasir", href: "/laporan/shift", icon: BarChart3 },
+            { title: "Laporan Kas & Omset Kasir", href: "/laporan/shift", icon: BarChart3 },
             { title: "Peringatan Expired & Habis", href: "/laporan/stok-alert", icon: Pill, badge: "Penting" },
             { title: "Smart Forecasting & Harga", href: "/laporan/analitik", icon: BarChart3 },
             { title: "Akuntansi & Jurnal Umum", href: "/akuntansi/jurnal", icon: BookOpenCheck },
@@ -108,7 +109,7 @@ export function Sidebar() {
             { title: "Pengaturan Webstore", href: "/settings/webstore", icon: Settings, badge: "Owner" },
             { title: "Portal Utama Gigin's Hub", href: "/hub", icon: Building2, badge: "Hub" },
             { title: "Role & Access Control", href: "/hub/access-control", icon: ShieldCheck, badge: "RBAC" },
-            { title: "Login & Audit Logs", href: "/hub/audit-logs", icon: History, badge: "Log" },
+            { title: "Login & Audit Logs", href: isOwner ? "/hub/audit-logs" : `/b/${activeBusiness.slug}/admin/audit-log`, icon: History, badge: "Log" },
           ],
         },
       ]
@@ -160,7 +161,7 @@ export function Sidebar() {
             { title: "Pengaturan Webstore", href: "/settings/webstore", icon: Settings, badge: "Owner" },
             { title: "Portal Utama Gigin's Hub", href: "/hub", icon: Building2, badge: "Hub" },
             { title: "Role & Access Control", href: "/hub/access-control", icon: ShieldCheck, badge: "RBAC" },
-            { title: "Login & Audit Logs", href: "/hub/audit-logs", icon: History, badge: "Log" },
+            { title: "Login & Audit Logs", href: isOwner ? "/hub/audit-logs" : `/b/${activeBusiness.slug}/admin/audit-log`, icon: History, badge: "Log" },
           ],
         },
       ];

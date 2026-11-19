@@ -31,16 +31,16 @@ export default function LaporanShiftPage() {
   const [isCloseModalOpen, setIsCloseModalOpen] = useState(false);
   const [closingPhysicalCash, setClosingPhysicalCash] = useState<number>(840000); // 300k opening + 540k cash sales
   const [shiftNotes, setShiftNotes] = useState("");
-  const [isClosed, setIsClosed] = useState(false);
+  const [isReconciled, setIsReconciled] = useState(false);
 
   // Expected Cash = Kas Awal + Penjualan Tunai
   const expectedCash = ACTIVE_SHIFT.openingCash + ACTIVE_SHIFT.totalCashSales;
   const cashDifference = closingPhysicalCash - expectedCash;
 
   const handleCloseShift = () => {
-    setIsClosed(true);
+    setIsReconciled(true);
     setIsCloseModalOpen(false);
-    alert(`Shift ${ACTIVE_SHIFT.shiftNumber} berhasil DITUTUP!\nRekap kasir dicatat & selisih kas telah dijurnal ke sistem akuntansi.`);
+    alert(`Rekonsiliasi kas kasir berhasil dicatat!\nSistem tetap AKTIF & transaksi kasir POS berjalan terus menerus tanpa henti.`);
   };
 
   return (
@@ -50,47 +50,45 @@ export default function LaporanShiftPage() {
         <div>
           <h1 className="text-xl font-bold text-slate-800 flex items-center gap-2">
             <Clock className="h-5 w-5 text-emerald-600" />
-            Laporan Pergantian Shift & Rekonsiliasi Kas Kasir
+            Laporan Rekonsiliasi Kas & Transaksi Kasir
           </h1>
           <p className="text-xs text-slate-500">
-            Pencatatan kas awal, omset per metode bayar, dan rekonsiliasi selisih kasir saat serah terima tugas.
+            Pencatatan kas masuk, omset per metode bayar, dan rekonsiliasi kasir secara real-time dan berkelanjutan (tanpa tutup shift).
           </p>
         </div>
 
         <div className="flex items-center gap-2">
           <Button variant="outline" size="sm" onClick={() => window.print()} className="text-xs">
             <Printer className="mr-1.5 h-4 w-4" />
-            Cetak Rekap Shift
+            Cetak Rekap Kas
           </Button>
-          {!isClosed && (
-            <Button
-              size="sm"
-              onClick={() => setIsCloseModalOpen(true)}
-              className="text-xs bg-rose-600 hover:bg-rose-700 text-white font-bold"
-            >
-              <Lock className="mr-1.5 h-4 w-4" />
-              Tutup Shift Kasir Sekarang
-            </Button>
-          )}
+          <Button
+            size="sm"
+            onClick={() => setIsCloseModalOpen(true)}
+            className="text-xs bg-emerald-600 hover:bg-emerald-700 text-white font-bold"
+          >
+            <CheckCircle2 className="mr-1.5 h-4 w-4" />
+            Rekonsiliasi Kas Laci
+          </Button>
         </div>
       </div>
 
       {/* Shift Status Banner */}
-      <Card className={`border ${isClosed ? "border-slate-300 bg-slate-50" : "border-emerald-200 bg-emerald-50/50"}`}>
+      <Card className="border border-emerald-200 bg-emerald-50/50">
         <CardContent className="p-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
           <div className="flex items-center gap-3">
-            <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-white ${isClosed ? "bg-slate-400" : "bg-emerald-600"}`}>
-              {isClosed ? <CheckCircle2 className="h-6 w-6" /> : "S1"}
+            <div className="w-10 h-10 rounded-full flex items-center justify-center font-bold text-white bg-emerald-600">
+              <CheckCircle2 className="h-6 w-6" />
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <span className="font-bold text-sm text-slate-900">{ACTIVE_SHIFT.shiftNumber}</span>
-                <Badge variant={isClosed ? "secondary" : "success"} className="text-[10px]">
-                  {isClosed ? "SHIFT SELESAI / CLOSED" : "SHIFT AKTIF (OPEN)"}
+                <span className="font-bold text-sm text-slate-900">Register POS Kasir</span>
+                <Badge variant="success" className="text-[10px]">
+                  REGISTER AKTIF (TRANSAKSI BERJALAN TERUS)
                 </Badge>
               </div>
               <p className="text-xs text-slate-500 mt-0.5">
-                Petugas Kasir: <b>{ACTIVE_SHIFT.cashierName}</b> ({ACTIVE_SHIFT.cashierRole}) &bull; Buka: {new Date(ACTIVE_SHIFT.openedAt).toLocaleTimeString("id-ID")} WIB
+                Kasir Bertugas: <b>{ACTIVE_SHIFT.cashierName}</b> ({ACTIVE_SHIFT.cashierRole}) &bull; Buka Sejak: {new Date(ACTIVE_SHIFT.openedAt).toLocaleTimeString("id-ID")} WIB
               </p>
             </div>
           </div>
@@ -193,13 +191,13 @@ export default function LaporanShiftPage() {
         </Card>
       </div>
 
-      {/* MODAL: TUTUP SHIFT KASIR */}
+      {/* MODAL: REKONSILIASI KAS KASIR (NON-BLOCKING) */}
       <Dialog open={isCloseModalOpen} onOpenChange={setIsCloseModalOpen}>
         <DialogContent onClose={() => setIsCloseModalOpen(false)} className="max-w-md">
           <DialogHeader>
-            <DialogTitle>Formulir Penutupan Shift Kasir</DialogTitle>
+            <DialogTitle>Rekonsiliasi Kas Laci Kasir</DialogTitle>
             <DialogDescription>
-              Hitung uang fisik di laci kasir dan serahkan ke kasir shift berikutnya
+              Hitung uang fisik di laci kasir secara berkala tanpa menghentikan transaksi
             </DialogDescription>
           </DialogHeader>
 
@@ -224,14 +222,14 @@ export default function LaporanShiftPage() {
             <div className={`p-3 rounded-xl border flex justify-between items-center font-bold ${
               cashDifference === 0 ? "bg-emerald-50 text-emerald-800 border-emerald-200" : "bg-rose-50 text-rose-800 border-rose-200"
             }`}>
-              <span>Selisih Akhir:</span>
+              <span>Selisih Fisik vs Sistem:</span>
               <span>{formatRupiah(cashDifference)}</span>
             </div>
 
             <div>
-              <label className="font-semibold text-slate-700 block mb-1">Catatan Serah Terima Shift:</label>
+              <label className="font-semibold text-slate-700 block mb-1">Catatan Kasir / Kas Kecil:</label>
               <Input
-                placeholder="Misal: Uang receh 2000 habis, diganti di shift 2..."
+                placeholder="Misal: Pecahan 5.000 ditambah untuk kembalian..."
                 value={shiftNotes}
                 onChange={(e) => setShiftNotes(e.target.value)}
               />
@@ -242,8 +240,8 @@ export default function LaporanShiftPage() {
             <Button variant="outline" onClick={() => setIsCloseModalOpen(false)}>
               Batal
             </Button>
-            <Button onClick={handleCloseShift} className="bg-rose-600 hover:bg-rose-700 text-white font-bold">
-              Konfirmasi Tutup Shift & Cetak Berita Acara
+            <Button onClick={handleCloseShift} className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold">
+              Simpan Rekonsiliasi & Terus Bertransaksi
             </Button>
           </DialogFooter>
         </DialogContent>
