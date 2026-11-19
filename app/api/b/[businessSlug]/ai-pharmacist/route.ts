@@ -113,37 +113,37 @@ function buildSystemInstruction(stockList: PharmacyStockItem[]): string {
   );
 
   return `Kamu adalah Asisten Apoteker Pintar di Apotik Tamansari, Bandung.
-Tugasmu adalah membantu kasir/apoteker merekomendasikan obat berdasarkan keluhan atau gejala pasien.
+Tugasmu adalah membantu kasir/petugas apotek mencari rekomendasi obat dan aturan pakainya secara kasual, komunikatif, dan akurat berdasarkan keluhan atau pertanyaan pasien.
 
-ATURAN WAJIB:
-1. HANYA boleh merekomendasikan obat yang ada dalam daftar stok Apotik Tamansari di bawah ini. Jika tidak ada yang cocok atau stok kosong, katakan terus terang.
-2. Periksa golongan obat:
-   - KERAS: Wajib ada Resep Dokter atau persetujuan Apoteker. Tegaskan ini dengan tegas.
-   - BEBAS_TERBATAS: Berikan peringatan khusus pemakaian.
-   - BEBAS: Obat bebas, dapat diberikan langsung.
-3. Selalu tanyakan/ingatkan kontraindikasi dasar: usia pasien (anak/dewasa), ibu hamil/menyusui, alergi obat.
-4. Respons harus dalam format JSON yang valid dan tepat seperti schema di bawah.
-5. Gunakan Bahasa Indonesia yang ramah, profesional, dan mudah dipahami kasir/apoteker.
-6. Jangan merekomendasikan obat di luar daftar stok yang diberikan.
-7. Dosis dan aturan pakai harus sesuai standar farmasi Indonesia.
+PANDUAN GAYA BAHASA & KOMUNIKASI (KASUAL CHAT):
+1. Gunakan gaya bahasa percakapan yang ramah, santai, komunikatif, dan bersahabat layaknya mengobrol dengan rekan kerja kasir/apoteker di apotek (gunakan sapaan ramah seperti "Halo!", "Baik kak/rekan kasir,", "Untuk keluhan ini...").
+2. medicalNote harus berupa pesan chat yang santai, jelas, dan mengalir enak dibaca (bisa gunakan emoji farmasi yang relevan seperti 💊, 🌿, 💧).
+3. HANYA boleh merekomendasikan obat yang ada dalam daftar stok Apotik Tamansari di bawah ini. Jika tidak ada yang cocok atau stok kosong, sampaikan terus terang dengan ramah dan beri saran umum.
+4. Periksa golongan obat:
+   - KERAS: Wajib ada Resep Dokter atau persetujuan Apoteker penanggung jawab. Ingatkan ini dengan jelas.
+   - BEBAS_TERBATAS: Berikan peringatan khusus pemakaian jika ada (misal: efek mengantuk).
+   - BEBAS: Obat bebas, aman diserahkan langsung.
+5. Ingatkan hal penting/kontraindikasi yang perlu ditanyakan ke pasien (usia anak/dewasa, riwayat alergi, sedang hamil/menyusui, punya sakit maag/lambung).
+6. Pada array recommendedProducts, cantumkan aturan pakai dan dosis yang praktis pada dosageNote (contoh: "3x sehari 1 tablet sesudah makan", "1x sehari malam sebelum tidur").
+7. Respons wajib dalam format JSON yang valid persis sesuai SCHEMA di bawah.
 
 SCHEMA RESPONS JSON (wajib diikuti persis):
 {
-  "medicalNote": "string — penjelasan medis singkat tentang keluhan/gejala dan pendekatan terapinya",
-  "contraindications": "string — pengingat kontraindikasi & hal yang perlu ditanyakan ke pasien (opsional jika tidak relevan)",
+  "medicalNote": "string — pesan percakapan kasual dan penjelasan singkat mengenai solusi keluhan pasien",
+  "contraindications": "string — pengingat ramah hal yang perlu dikonfirmasi ke pasien (opsional jika tidak ada)",
   "recommendedProducts": [
     {
       "productId": "string — ID produk dari daftar stok",
       "name": "string — nama produk lengkap",
       "price": number,
-      "dosageNote": "string — aturan pakai & dosis singkat",
+      "dosageNote": "string — aturan pakai & waktu konsumsi jelas (misal: 3x1 setelah makan)",
       "requiresPrescription": boolean,
       "drugClass": "BEBAS | BEBAS_TERBATAS | KERAS",
       "stock": number,
       "baseUnit": "string"
     }
   ],
-  "disclaimer": "string — peringatan/disclaimer profesional farmasi",
+  "disclaimer": "string — catatan singkat edukasi obat",
   "requiresPrescriptionOverall": boolean
 }
 
@@ -169,8 +169,6 @@ export async function POST(
 
     // 2. Validasi bisnis PHARMACY
     const { businessSlug } = params;
-    // Untuk sistem mock-based ini, cek slug apotik
-    // Pada implementasi Prisma penuh, query Business by slug & check type === PHARMACY
     const isPharmacyBusiness =
       businessSlug.includes("apotik") ||
       businessSlug.includes("pharmacy") ||
@@ -186,13 +184,16 @@ export async function POST(
       );
     }
 
-    // 3. Ambil input keluhan
+    // 3. Ambil input keluhan & riwayat chat (jika ada)
     const body = await request.json();
-    const { complaint } = body as { complaint: string };
+    const { complaint, history } = body as {
+      complaint: string;
+      history?: Array<{ role: "user" | "assistant"; content: string }>;
+    };
 
-    if (!complaint || complaint.trim().length < 3) {
+    if (!complaint || complaint.trim().length < 2) {
       return NextResponse.json(
-        { success: false, message: "Keluhan/gejala wajib diisi minimal 3 karakter." },
+        { success: false, message: "Pesan atau keluhan wajib diisi minimal 2 karakter." },
         { status: 400 }
       );
     }
@@ -204,7 +205,7 @@ export async function POST(
         {
           success: false,
           message:
-            "GEMINI_API_KEY belum dikonfigurasi. Silakan isi di file .env lalu restart server.",
+            "GEMINI_API_KEY belum dikonfigurasi. Silakan isi di file .env atau Vercel Environment Variables.",
           needsApiKey: true,
         },
         { status: 503 }
@@ -215,7 +216,33 @@ export async function POST(
     const stockList = buildStockList();
     const systemInstruction = buildSystemInstruction(stockList);
 
-    // 6. Call Gemini API with fallback models
+    // 6. Build multi-turn contents for Gemini
+    const contents: any[] = [];
+
+    // Sertakan riwayat percakapan sebelumnya jika ada (maksimal 6 interaksi terakhir)
+    if (Array.isArray(history) && history.length > 0) {
+      const recentHistory = history.slice(-6);
+      for (const msg of recentHistory) {
+        contents.push({
+          role: msg.role === "assistant" ? "model" : "user",
+          parts: [{ text: msg.content }],
+        });
+      }
+    }
+
+    // Tambahkan pertanyaan/keluhan terbaru
+    contents.push({
+      role: "user",
+      parts: [
+        {
+          text: `Pertanyaan/Keluhan kasir: "${complaint.trim()}"
+
+Berikan saran ramah kasual dan rekomendasi obat yang cocok dari stok Apotik Tamansari dalam format JSON yang diminta.`,
+        },
+      ],
+    });
+
+    // 7. Call Gemini API with fallback models
     const ai = new GoogleGenAI({ apiKey: geminiApiKey });
     const candidateModels = [
       "gemini-3.5-flash",
@@ -231,21 +258,10 @@ export async function POST(
       try {
         const response = await ai.models.generateContent({
           model,
-          contents: [
-            {
-              role: "user",
-              parts: [
-                {
-                  text: `Keluhan pasien: "${complaint.trim()}"
-
-Berikan rekomendasi obat dari daftar stok Apotik Tamansari sesuai format JSON yang diminta.`,
-                },
-              ],
-            },
-          ],
+          contents,
           config: {
             systemInstruction,
-            temperature: 0.3,
+            temperature: 0.35,
             responseMimeType: "application/json",
           },
         });

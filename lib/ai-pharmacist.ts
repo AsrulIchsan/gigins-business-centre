@@ -38,6 +38,15 @@ export interface AiPharmacistResponse {
   requiresPrescriptionOverall: boolean;
 }
 
+export interface ChatMessage {
+  id: string;
+  sender: "user" | "assistant";
+  text: string;
+  timestamp: string;
+  data?: AiPharmacistResponse;
+  isError?: boolean;
+}
+
 /** Map golongan obat → badge warna & label */
 export const DRUG_CLASS_CONFIG: Record<
   DrugClass,
